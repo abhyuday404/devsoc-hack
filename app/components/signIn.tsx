@@ -1,10 +1,12 @@
 "use client";
 
+import { signIn } from "@/lib/auth-client";
+
 export default function LoginPage() {
   return (
     <button
-      onClick={() => {
-        window.location.href = "/api/auth/signin/google";
+      onClick={async () => {
+        await signIn();
       }}
     >
       Sign in with Google

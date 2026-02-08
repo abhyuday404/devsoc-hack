@@ -2,21 +2,23 @@ import {
   pgTable,
   text,
   timestamp,
-  uuid,
   index,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
 
 
 export const users = pgTable("user", {
-  id: uuid("id").defaultRandom().primaryKey(),
+  id: text("id").primaryKey(),
 
   email: text("email").notNull().unique(),
   emailVerified: timestamp("email_verified", { mode: "date" }),
 
   name: text("name"),
   image: text("image"),
+  phone: text("phone"),
+  gender: text("gender"),
+  residentialStatus: text("residential_status"),
 
-  // your custom fields
   createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { mode: "date" }).defaultNow().notNull(),
 });
@@ -25,46 +27,62 @@ export const users = pgTable("user", {
 export const accounts = pgTable(
   "account",
   {
-    id: uuid("id").defaultRandom().primaryKey(),
+    id: text("id").primaryKey(),
+    accountId: text("account_id").notNull(),
+    providerId: text("provider_id").notNull(),
 
-    userId: uuid("user_id")
+    userId: text("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
-
-    provider: text("provider").notNull(),
-    providerAccountId: text("provider_account_id").notNull(),
 
     accessToken: text("access_token"),
     refreshToken: text("refresh_token"),
     idToken: text("id_token"),
-    expiresAt: timestamp("expires_at", { mode: "date" }),
+    accessTokenExpiresAt: timestamp("access_token_expires_at", { mode: "date" }),
+    refreshTokenExpiresAt: timestamp("refresh_token_expires_at", {
+      mode: "date",
+    }),
+    scope: text("scope"),
+    password: text("password"),
 
     createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date" }).defaultNow().notNull(),
   },
   (table) => ({
-    providerIdx: index("account_provider_idx").on(
-      table.provider,
-      table.providerAccountId,
+    accountProviderIdx: uniqueIndex("account_provider_account_id_idx").on(
+      table.providerId,
+      table.accountId,
     ),
   }),
 );
 
 
 export const sessions = pgTable("session", {
-  id: uuid("id").defaultRandom().primaryKey(),
+  id: text("id").primaryKey(),
 
-  userId: uuid("user_id")
+  expiresAt: timestamp("expires_at", { mode: "date" }).notNull(),
+  token: text("token").notNull().unique(),
+  userId: text("user_id")
     .notNull()
     .references(() => users.id, { onDelete: "cascade" }),
 
-  sessionToken: text("session_token").notNull().unique(),
-  expires: timestamp("expires", { mode: "date" }).notNull(),
-
+  ipAddress: text("ip_address"),
+  userAgent: text("user_agent"),
   createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { mode: "date" }).defaultNow().notNull(),
 });
 
-export const verificationTokens = pgTable("verification_token", {
-  identifier: text("identifier").notNull(),
-  token: text("token").notNull(),
-  expires: timestamp("expires", { mode: "date" }).notNull(),
-});
+export const verification = pgTable(
+  "verification",
+  {
+    id: text("id").primaryKey(),
+    identifier: text("identifier").notNull(),
+    value: text("value").notNull(),
+    expiresAt: timestamp("expires_at", { mode: "date" }).notNull(),
+    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date" }).defaultNow().notNull(),
+  },
+  (table) => ({
+    identifierIdx: index("verification_identifier_idx").on(table.identifier),
+  }),
+);
