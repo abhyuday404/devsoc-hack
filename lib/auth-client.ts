@@ -7,7 +7,7 @@ const authClient = createAuthClient();
 export const signIn = async () => {
   const response = await authClient.signIn.social({
     provider: "google",
-    callbackURL: "/",
+    callbackURL: "/dashboard",
   });
   if (response.error) {
     throw new Error(response.error.message || "Sign-in failed");
