@@ -5,7 +5,10 @@ import { db } from "@/lib/db";
 import * as schema from "@/lib/auth-schema";
 
 export const auth = betterAuth({
-  baseURL: process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
+  baseURL:
+    process.env.BETTER_AUTH_URL ||
+    process.env.NEXT_PUBLIC_APP_URL ||
+    "http://localhost:3000",
   database: drizzleAdapter(db, {
     provider: "pg",
     schema,
@@ -16,22 +19,6 @@ export const auth = betterAuth({
       phone: { type: "string", required: false },
       gender: { type: "string", required: false },
       residentialStatus: { type: "string", required: false },
-    },
-  },
-  session: {
-    fields: {
-      expiresAt: "expires",
-      token: "sessionToken",
-    },
-  },
-  account: {
-    fields: {
-      providerId: "provider",
-      accountId: "providerAccountId",
-      refreshToken: "refresh_token",
-      accessToken: "access_token",
-      accessTokenExpiresAt: "expires_at",
-      idToken: "id_token",
     },
   },
 

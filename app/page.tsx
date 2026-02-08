@@ -5,13 +5,19 @@ import { useState } from "react";
 
 export default function LoginPage() {
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleLogin = async () => {
+    setError(null);
     try {
       setLoading(true);
-      await signIn(); // redirects to Google
+      await signIn();
     } catch (err) {
       console.error("Sign-in failed", err);
+      setError(
+        err instanceof Error ? err.message : "Unable to sign in right now.",
+      );
+    } finally {
       setLoading(false);
     }
   };
@@ -32,6 +38,11 @@ export default function LoginPage() {
         >
           {loading ? "Redirecting…" : "Sign in with Google"}
         </button>
+        {error ? (
+          <p className="mt-3 text-sm text-red-400" role="alert">
+            {error}
+          </p>
+        ) : null}
       </div>
     </div>
   );
