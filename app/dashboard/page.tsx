@@ -2,13 +2,16 @@
 import React, { useState, DragEvent, useEffect, useRef } from "react";
 import Image from "next/image";
 
-type View = "upload" | "data" | "insights";
+type View = "upload" | "data" | "insights" | "profile";
 
 const Page = () => {
   const [activeView, setActiveView] = useState<View>("upload");
   const [isDragging, setIsDragging] = useState(false);
   const [isAddCustomerOpen, setIsAddCustomerOpen] = useState(false);
   const [newCustomerName, setNewCustomerName] = useState("");
+  const [newCustomerEmail, setNewCustomerEmail] = useState("");
+  const [newCustomerPhone, setNewCustomerPhone] = useState("");
+  const [newCustomerStatus, setNewCustomerStatus] = useState("");
   const [customers, setCustomers] = useState<string[]>([
     "Ashman",
     "Nimesha",
@@ -22,13 +25,20 @@ const Page = () => {
     { role: "user" | "ai"; text: string }[]
   >([]);
   const [input, setInput] = useState("");
+  const [selectedCustomer, setSelectedCustomer] = useState("Ashman");
   const chatContainerRef = useRef<HTMLDivElement>(null);
 
   const handleAddCustomer = () => {
     if (!newCustomerName.trim()) return;
 
-    setCustomers((prev) => [...prev, newCustomerName.trim()]);
+    const customerName = newCustomerName.trim();
+    setCustomers((prev) => [...prev, customerName]);
+    setSelectedCustomer(customerName);
+    setActiveView("profile");
     setNewCustomerName("");
+    setNewCustomerEmail("");
+    setNewCustomerPhone("");
+    setNewCustomerStatus("");
     setIsAddCustomerOpen(false);
   };
 
@@ -89,9 +99,72 @@ const Page = () => {
       return <div className="w-full h-full" />;
     }
 
+    if (activeView === "profile") {
+      return (
+        <div className="h-full overflow-y-auto p-6">
+          <div className="border-2 border-[#933333] bg-[#933333]/5 p-6">
+            <h2 className="text-2xl font-bold">{selectedCustomer}</h2>
+            <p className="mt-2 text-sm text-[#933333]/80">
+              Customer profile overview
+            </p>
+
+            <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="border-2 border-[#933333] p-4">
+                <label className="text-xs font-bold uppercase block mb-1">
+                  Email
+                </label>
+                <input
+                  type="email"
+                  placeholder="placeholder@email.com"
+                  className="w-full bg-transparent border-none outline-none"
+                />
+              </div>
+
+              <div className="border-2 border-[#933333] p-4">
+                <label className="text-xs font-bold uppercase block mb-1">
+                  Phone
+                </label>
+                <input
+                  type="tel"
+                  placeholder="+91"
+                  className="w-full bg-transparent border-none outline-none"
+                />
+              </div>
+
+              <div className="border-2 border-[#933333] p-4">
+                <label className="text-xs font-bold uppercase block mb-1">
+                  Status
+                </label>
+                <input
+                  type="text"
+                  placeholder="Active"
+                  className="w-full bg-transparent border-none outline-none"
+                />
+              </div>
+
+              <div className="border-2 border-[#933333] p-4">
+                <label className="text-xs font-bold uppercase block mb-1">
+                  Last Activity
+                </label>
+                <input
+                  type="text"
+                  placeholder="No activity yet"
+                  disabled
+                  className="w-full bg-transparent border-none outline-none opacity-70 cursor-not-allowed"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="flex flex-col w-full h-full min-h-0">
-        <div ref={chatContainerRef} className="flex-1 min-h-0 overflow-y-auto p-4">
+        <div
+          ref={chatContainerRef}
+          className="flex-1 min-h-0 overflow-y-auto p-4"
+        >
           <div className="flex min-h-full flex-col justify-end space-y-3">
             {messages.map((m, i) => (
               <div
@@ -131,7 +204,7 @@ const Page = () => {
   return (
     <div className="w-screen h-screen bg-[#FFE2C7] overflow-hidden text-[#933333]">
       {/* Header */}
-      <div className="h-[12%] border-b-2 border-[#933333] flex items-center">
+      <div className="h-[12%] border-b-2 border-[#933333] flex items-center justify-center">
         <Image
           src="/WhatsApp_Image_2026-02-09_at_2.10.10_AM-removebg-preview 1.svg"
           alt="Pennyledger"
@@ -151,6 +224,10 @@ const Page = () => {
             {customers.map((customer, index) => (
               <div
                 key={`${customer}-${index}`}
+                onClick={() => {
+                  setSelectedCustomer(customer);
+                  setActiveView("profile");
+                }}
                 className="px-4 py-3 border-b border-[#933333]/40
                 hover:bg-[#933333]/10 cursor-pointer text-[#933333] text-sm"
               >
@@ -173,6 +250,12 @@ const Page = () => {
         <div className="flex flex-col flex-1 min-h-0">
           {/* Top buttons */}
           <div className="flex h-[10%] justify-center items-center gap-5 p-10">
+            <button
+              onClick={() => setActiveView("profile")}
+              className="border-2 border-[#933333] w-40 h-12 font-bold text-[#933333]"
+            >
+              Customer Profile
+            </button>
             <button
               onClick={() => setActiveView("upload")}
               className="border-2 border-[#933333] w-40 h-12 font-bold text-[#933333]"
@@ -220,10 +303,35 @@ const Page = () => {
               className="w-full border-2 border-[#933333] bg-[#FFE2C7] text-[#933333] p-3 outline-none placeholder:text-[#933333]/70"
               autoFocus
             />
+            <input
+              value={newCustomerEmail}
+              onChange={(e) => setNewCustomerEmail(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleAddCustomer()}
+              placeholder="Email"
+              className="mt-3 w-full border-2 border-[#933333] bg-[#FFE2C7] text-[#933333] p-3 outline-none placeholder:text-[#933333]/70"
+            />
+            <input
+              value={newCustomerPhone}
+              onChange={(e) => setNewCustomerPhone(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleAddCustomer()}
+              placeholder="Phone number"
+              className="mt-3 w-full border-2 border-[#933333] bg-[#FFE2C7] text-[#933333] p-3 outline-none placeholder:text-[#933333]/70"
+            />
+            <input
+              value={newCustomerStatus}
+              onChange={(e) => setNewCustomerStatus(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleAddCustomer()}
+              placeholder="Status"
+              className="mt-3 w-full border-2 border-[#933333] bg-[#FFE2C7] text-[#933333] p-3 outline-none placeholder:text-[#933333]/70"
+            />
+
             <div className="mt-5 flex justify-end gap-3">
               <button
                 onClick={() => {
                   setNewCustomerName("");
+                  setNewCustomerEmail("");
+                  setNewCustomerPhone("");
+                  setNewCustomerStatus("");
                   setIsAddCustomerOpen(false);
                 }}
                 className="border-2 border-[#933333] px-5 py-2 font-bold text-[#933333] hover:bg-[#933333]/10"
