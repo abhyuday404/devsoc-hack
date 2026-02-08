@@ -23,23 +23,23 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-neutral-950">
-      <div className="w-full max-w-sm rounded-2xl border border-neutral-800 bg-neutral-900 p-8">
-        <h1 className="text-2xl font-semibold text-white mb-2">Sign in</h1>
+    <div className="min-h-screen flex items-center justify-center bg-[#FFE2C7] p-6 text-[#933333]">
+      <div className="w-full max-w-sm border-2 border-[#933333] bg-[#FFE2C7] p-8">
+        <h1 className="text-2xl font-bold mb-2">Sign in</h1>
 
-        <p className="text-sm text-neutral-400 mb-6">
+        <p className="text-sm text-[#933333]/80 mb-6">
           Continue with your Google account
         </p>
 
         <button
           onClick={handleLogin}
           disabled={loading}
-          className="w-full rounded-lg bg-white py-3 font-medium text-black hover:bg-neutral-200 transition disabled:opacity-60"
+          className="w-full border-2 border-[#933333] bg-[#933333] py-3 font-bold text-[#FFE2C7] transition hover:bg-[#7b2b2b] disabled:opacity-60"
         >
           {loading ? "Redirecting…" : "Sign in with Google"}
         </button>
         {error ? (
-          <p className="mt-3 text-sm text-red-400" role="alert">
+          <p className="mt-3 text-sm text-[#933333]" role="alert">
             {error}
           </p>
         ) : null}
