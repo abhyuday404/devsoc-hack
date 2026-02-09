@@ -1,7 +1,7 @@
 "use client";
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import Image from "next/image";
-import { ChatMessage, Customer, View } from "./types";
+import { Customer, View, TableInfo } from "./types";
 import UploadView from "./components/UploadView";
 import UserDataView from "./components/UserDataView";
 import ProfileView from "./components/ProfileView";
@@ -19,113 +19,104 @@ const Page = () => {
   const [newCustomerPhone, setNewCustomerPhone] = useState("");
   const [newCustomerStatus, setNewCustomerStatus] = useState("");
   const [customers, setCustomers] = useState<Customer[]>([]);
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [input, setInput] = useState("");
   const [selectedCustomerId, setSelectedCustomerId] = useState<number | null>(
     null,
   );
-  const [uploadedDocuments, setUploadedDocuments] = useState<string[]>([]);
-  const chatContainerRef = useRef<HTMLDivElement>(null);
+  const [uploadedTables, setUploadedTables] = useState<TableInfo[]>([]);
+  const [addCustomerError, setAddCustomerError] = useState<string | null>(null);
+  const [addCustomerLoading, setAddCustomerLoading] = useState(false);
+
   const selectedCustomer =
     customers.find((customer) => customer.id === selectedCustomerId) || null;
 
   const loadCustomers = async () => {
-    const dbCustomers = (await viewCustomersFromCustomerTable()) as Customer[];
-    setCustomers(dbCustomers);
-    setSelectedCustomerId((prev) =>
-      prev && dbCustomers.some((customer) => customer.id === prev)
-        ? prev
-        : (dbCustomers[0]?.id ?? null),
-    );
+    try {
+      const dbCustomers =
+        (await viewCustomersFromCustomerTable()) as Customer[];
+      setCustomers(dbCustomers);
+      setSelectedCustomerId((prev) =>
+        prev && dbCustomers.some((customer) => customer.id === prev)
+          ? prev
+          : (dbCustomers[0]?.id ?? null),
+      );
+    } catch (err) {
+      console.error("Failed to load customers:", err);
+    }
   };
 
   const handleAddCustomer = async () => {
     const name = newCustomerName.trim();
-    if (!name) return;
+    if (!name) {
+      setAddCustomerError("Customer name is required.");
+      return;
+    }
 
-    const createdCustomer = (await addCustomerToCustomerTable({
-      name,
-      email: newCustomerEmail.trim() || "unknown@example.com",
-      phone: newCustomerPhone.trim() || "+1 (000) 000-0000",
-      status: newCustomerStatus.trim() || "Active",
-    })) as Customer;
+    setAddCustomerLoading(true);
+    setAddCustomerError(null);
 
-    await loadCustomers();
-    setSelectedCustomerId(createdCustomer.id);
-    setActiveView("profile");
-    setNewCustomerName("");
-    setNewCustomerEmail("");
-    setNewCustomerPhone("");
-    setNewCustomerStatus("");
-    setIsAddCustomerOpen(false);
+    try {
+      const createdCustomer = (await addCustomerToCustomerTable({
+        name,
+        email: newCustomerEmail.trim() || "unknown@example.com",
+        phone: newCustomerPhone.trim() || "+1 (000) 000-0000",
+        status: newCustomerStatus.trim() || "Active",
+      })) as Customer;
+
+      await loadCustomers();
+      setSelectedCustomerId(createdCustomer.id);
+      setActiveView("profile");
+      setNewCustomerName("");
+      setNewCustomerEmail("");
+      setNewCustomerPhone("");
+      setNewCustomerStatus("");
+      setIsAddCustomerOpen(false);
+    } catch (err) {
+      setAddCustomerError(
+        `Failed to add customer: ${err instanceof Error ? err.message : "Unknown error"}`,
+      );
+    } finally {
+      setAddCustomerLoading(false);
+    }
   };
 
-  const addUploadedDocuments = (files: File[]) => {
-    if (!files.length) return;
-    setUploadedDocuments((prev) => [
-      ...prev,
-      ...files.map((file) => file.name),
-    ]);
-  };
-
-  const sendMessage = () => {
-    if (!input.trim()) return;
-
-    setMessages((prev) => [
-      ...prev,
-      { role: "user", text: input },
-      { role: "ai", text: "Insights will appear here soon 👀" },
-    ]);
-    setInput("");
+  const handleUploadSuccess = (tables: TableInfo[]) => {
+    setUploadedTables(tables);
   };
 
   useEffect(() => {
     const initializeCustomers = async () => {
-      const dbCustomers =
-        (await viewCustomersFromCustomerTable()) as Customer[];
-      setCustomers(dbCustomers);
-      setSelectedCustomerId(dbCustomers[0]?.id ?? null);
+      try {
+        const dbCustomers =
+          (await viewCustomersFromCustomerTable()) as Customer[];
+        setCustomers(dbCustomers);
+        setSelectedCustomerId(dbCustomers[0]?.id ?? null);
+      } catch (err) {
+        console.error("Failed to initialize customers:", err);
+      }
     };
 
     void initializeCustomers();
   }, []);
 
-  useEffect(() => {
-    if (activeView !== "insights") return;
-
-    const chatContainer = chatContainerRef.current;
-    if (!chatContainer) return;
-
-    chatContainer.scrollTop = chatContainer.scrollHeight;
-  }, [messages, activeView]);
-
   const renderContent = () => {
     if (activeView === "upload") {
       return (
         <UploadView
-          uploadedDocuments={uploadedDocuments}
-          onFilesAdded={addUploadedDocuments}
+          uploadedTables={uploadedTables}
+          onUploadSuccess={handleUploadSuccess}
         />
       );
     }
 
     if (activeView === "data") {
-      return <UserDataView customers={customers} />;
+      return <UserDataView uploadedTables={uploadedTables} />;
     }
 
     if (activeView === "profile") {
       return <ProfileView customer={selectedCustomer} />;
     }
 
-    return (
-      <InsightsView
-        messages={messages}
-        input={input}
-        onInputChange={setInput}
-        onSendMessage={sendMessage}
-        chatContainerRef={chatContainerRef}
-      />
-    );
+    return <InsightsView uploadedTables={uploadedTables} />;
   };
 
   const viewButtonClass = (view: View) =>
@@ -155,30 +146,57 @@ const Page = () => {
           </div>
 
           <div className="flex flex-col overflow-auto">
-            {customers.map((customer) => (
-              <div
-                key={customer.id}
-                onClick={() => {
-                  setSelectedCustomerId(customer.id);
-                  setActiveView("profile");
-                }}
-                className="
-                  h-13 px-4
-                  border-b-2 border-[#933333]
-                  hover:bg-[#933333]/10
-                  cursor-pointer
-                  text-[#933333] text-sm
-                  flex items-center
-                "
-              >
-                {customer.name}
+            {customers.length === 0 ? (
+              <div className="px-4 py-6 text-center">
+                <p className="text-xs text-[#933333]/50">No customers yet</p>
+                <p className="text-[10px] text-[#933333]/35 mt-1">
+                  Click the button below to add one
+                </p>
               </div>
-            ))}
+            ) : (
+              customers.map((customer) => (
+                <div
+                  key={customer.id}
+                  onClick={() => {
+                    setSelectedCustomerId(customer.id);
+                    setActiveView("profile");
+                  }}
+                  className={`
+                    h-13 px-4
+                    border-b-2 border-[#933333]
+                    hover:bg-[#933333]/10
+                    cursor-pointer
+                    text-[#933333] text-sm
+                    flex items-center
+                    transition
+                    ${selectedCustomerId === customer.id && activeView === "profile" ? "bg-[#933333]/10 font-bold" : ""}
+                  `}
+                >
+                  {customer.name}
+                </div>
+              ))
+            )}
           </div>
+
+          {/* Upload status indicator in sidebar */}
+          {uploadedTables.length > 0 && (
+            <div className="px-3 py-2 border-t-2 border-[#933333]/30 bg-[#933333]/5">
+              <div className="flex items-center gap-2">
+                <div className="h-2 w-2 rounded-full bg-green-600 animate-pulse" />
+                <span className="text-[10px] font-bold text-[#933333]/60 uppercase tracking-wider">
+                  {uploadedTables.length} Dataset
+                  {uploadedTables.length !== 1 ? "s" : ""} Loaded
+                </span>
+              </div>
+            </div>
+          )}
 
           <div className="p-3 mt-auto">
             <button
-              onClick={() => setIsAddCustomerOpen(true)}
+              onClick={() => {
+                setAddCustomerError(null);
+                setIsAddCustomerOpen(true);
+              }}
               className="w-full h-full border-2 mt-auto border-[#933333] p-4 text-[#933333] font-bold hover:bg-[#933333]/10"
             >
               + Add Customer
@@ -232,11 +250,32 @@ const Page = () => {
             <h2 className="text-2xl font-bold text-[#933333] mb-4">
               Add Customer
             </h2>
+
+            {addCustomerError && (
+              <div className="flex items-start gap-2 border-2 border-red-700 bg-red-100/60 p-3 text-red-800 mb-4">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-4 w-4 flex-shrink-0 mt-0.5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+                <p className="text-sm">{addCustomerError}</p>
+              </div>
+            )}
+
             <input
               value={newCustomerName}
               onChange={(e) => setNewCustomerName(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleAddCustomer()}
-              placeholder="Customer name"
+              placeholder="Customer name *"
               className="w-full border-2 border-[#933333] bg-[#FFE2C7] text-[#933333] p-3 outline-none placeholder:text-[#933333]/70"
               autoFocus
             />
@@ -269,17 +308,46 @@ const Page = () => {
                   setNewCustomerEmail("");
                   setNewCustomerPhone("");
                   setNewCustomerStatus("");
+                  setAddCustomerError(null);
                   setIsAddCustomerOpen(false);
                 }}
-                className="border-2 border-[#933333] px-5 py-2 font-bold text-[#933333] hover:bg-[#933333]/10"
+                disabled={addCustomerLoading}
+                className="border-2 border-[#933333] px-5 py-2 font-bold text-[#933333] hover:bg-[#933333]/10 disabled:opacity-50"
               >
                 Cancel
               </button>
               <button
                 onClick={handleAddCustomer}
-                className="border-2 border-[#933333] bg-[#933333] px-5 py-2 font-bold text-[#FFE2C7] hover:bg-[#7b2b2b]"
+                disabled={addCustomerLoading}
+                className="border-2 border-[#933333] bg-[#933333] px-5 py-2 font-bold text-[#FFE2C7] hover:bg-[#7b2b2b] disabled:opacity-60 disabled:cursor-not-allowed flex items-center gap-2"
               >
-                Add
+                {addCustomerLoading ? (
+                  <>
+                    <svg
+                      className="animate-spin h-4 w-4"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      />
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      />
+                    </svg>
+                    Adding...
+                  </>
+                ) : (
+                  "Add"
+                )}
               </button>
             </div>
           </div>
