@@ -1,7 +1,7 @@
-export type View = "upload" | "data" | "insights" | "profile";
+export type View = "upload" | "data" | "insights" | "profile" | "graphs";
 
 export type Customer = {
-  id: number;
+  id: string | number;
   name: string;
   email: string;
   phone: string;
