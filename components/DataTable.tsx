@@ -73,6 +73,26 @@ export default function DataTable({
     return sortedData.slice(start, start + pageSize);
   }, [sortedData, currentPage, pageSize]);
 
+  const paginationItems = useMemo(() => {
+    if (totalPages <= 1) return [];
+
+    const pages: (number | "...")[] = [];
+    const start = Math.max(0, currentPage - 1);
+    const end = Math.min(totalPages - 1, currentPage + 1);
+
+    pages.push(0);
+    if (start > 1) pages.push("...");
+    for (let page = start; page <= end; page++) {
+      if (page !== 0 && page !== totalPages - 1) {
+        pages.push(page);
+      }
+    }
+    if (end < totalPages - 2) pages.push("...");
+    if (totalPages > 1) pages.push(totalPages - 1);
+
+    return pages;
+  }, [currentPage, totalPages]);
+
   const formatCell = (value: string | number | null): string => {
     if (value === null || value === undefined) return "—";
     if (typeof value === "number") {
@@ -93,8 +113,8 @@ export default function DataTable({
 
   if (columns.length === 0 || data.length === 0) {
     return (
-      <div className="flex h-32 items-center justify-center rounded-lg border border-zinc-200 bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900">
-        <p className="text-sm text-zinc-500 dark:text-zinc-400">
+      <div className="flex h-32 items-center justify-center border-2 border-[#933333]/30 bg-[#FFE2C7]">
+        <p className="text-sm text-[#933333]/60">
           No data to display.
         </p>
       </div>
@@ -105,28 +125,23 @@ export default function DataTable({
     <div className="space-y-2">
       {/* Table info bar */}
       <div className="flex items-center justify-between px-1">
-        <p className="text-xs text-zinc-500 dark:text-zinc-400">
+        <p className="text-xs text-[#933333]/60">
           {data.length.toLocaleString()} row{data.length !== 1 ? "s" : ""} &bull;{" "}
           {columns.length} column{columns.length !== 1 ? "s" : ""}
         </p>
         {sortColumn && sortDirection && (
-          <p className="text-xs text-zinc-400 dark:text-zinc-500">
-            Sorted by <span className="font-medium text-zinc-600 dark:text-zinc-300">{sortColumn}</span>{" "}
+          <p className="text-xs text-[#933333]/45">
+            Sorted by <span className="font-medium text-[#933333]">{sortColumn}</span>{" "}
             ({sortDirection === "asc" ? "ascending" : "descending"})
           </p>
         )}
       </div>
 
-      {/* Scrollable table container */}
-      <div
-        className="overflow-auto rounded-lg border border-zinc-200 dark:border-zinc-700"
-        style={{ maxHeight }}
-      >
-        <table className="w-full border-collapse text-sm">
+      <div className="overflow-auto" style={{ maxHeight }}>
+        <table className="w-full text-sm">
           <thead className="sticky top-0 z-10">
-            <tr className="bg-zinc-50 dark:bg-zinc-800/90 backdrop-blur-sm">
-              {/* Row number column */}
-              <th className="whitespace-nowrap border-b border-r border-zinc-200 px-3 py-2 text-left text-xs font-medium uppercase tracking-wider text-zinc-400 dark:border-zinc-700 dark:text-zinc-500">
+            <tr className="bg-[#933333]/8">
+              <th className="whitespace-nowrap border-b border-[#933333]/40 px-3 py-2 text-left text-xs font-medium uppercase tracking-wider text-[#933333]/65">
                 #
               </th>
               {columns.map((col) => {
@@ -135,12 +150,12 @@ export default function DataTable({
                   <th
                     key={col}
                     onClick={() => handleSort(col)}
-                    className={`group cursor-pointer whitespace-nowrap border-b border-r border-zinc-200 px-3 py-2 text-xs font-medium uppercase tracking-wider transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-700/50 ${
+                    className={`group cursor-pointer whitespace-nowrap border-b border-[#933333]/40 px-3 py-2 text-xs font-medium uppercase tracking-wider transition-colors hover:bg-[#933333]/12 ${
                       numeric ? "text-right" : "text-left"
                     } ${
                       sortColumn === col
-                        ? "text-indigo-600 dark:text-indigo-400"
-                        : "text-zinc-500 dark:text-zinc-400"
+                        ? "text-[#7b2b2b]"
+                        : "text-[#933333]/70"
                     }`}
                   >
                     <div
@@ -157,7 +172,7 @@ export default function DataTable({
                         ) : sortColumn === col && sortDirection === "desc" ? (
                           <ChevronDown className="h-3.5 w-3.5" />
                         ) : (
-                          <ChevronsUpDown className="h-3.5 w-3.5 opacity-0 group-hover:opacity-50" />
+                          <ChevronsUpDown className="h-3.5 w-3.5 opacity-0 group-hover:opacity-60" />
                         )}
                       </span>
                     </div>
@@ -172,14 +187,13 @@ export default function DataTable({
               return (
                 <tr
                   key={globalIndex}
-                  className={`border-b border-zinc-100 transition-colors hover:bg-indigo-50/30 dark:border-zinc-800 dark:hover:bg-indigo-950/20 ${
+                  className={`border-b border-[#933333]/20 transition-colors hover:bg-[#933333]/8 ${
                     rowIndex % 2 === 0
-                      ? "bg-white dark:bg-zinc-900"
-                      : "bg-zinc-50/50 dark:bg-zinc-900/50"
+                      ? "bg-[#FFE2C7]"
+                      : "bg-[#933333]/[0.02]"
                   }`}
                 >
-                  {/* Row number */}
-                  <td className="whitespace-nowrap border-r border-zinc-100 px-3 py-1.5 text-xs tabular-nums text-zinc-400 dark:border-zinc-800 dark:text-zinc-600">
+                  <td className="whitespace-nowrap px-3 py-1.5 text-xs tabular-nums text-[#933333]/45">
                     {(globalIndex + 1).toLocaleString()}
                   </td>
                   {columns.map((col) => {
@@ -190,12 +204,12 @@ export default function DataTable({
                     return (
                       <td
                         key={col}
-                        className={`whitespace-nowrap border-r border-zinc-100 px-3 py-1.5 dark:border-zinc-800 ${
+                        className={`whitespace-nowrap px-3 py-1.5 ${
                           numeric ? "text-right tabular-nums" : "text-left"
                         } ${
                           isNull
-                            ? "text-zinc-300 dark:text-zinc-600 italic"
-                            : "text-zinc-800 dark:text-zinc-200"
+                            ? "text-[#933333]/35 italic"
+                            : "text-[#933333]"
                         }`}
                         title={value !== null && value !== undefined ? String(value) : "null"}
                       >
@@ -214,8 +228,8 @@ export default function DataTable({
 
       {/* Pagination controls */}
       {totalPages > 1 && (
-        <div className="flex items-center justify-between px-1">
-          <p className="text-xs text-zinc-500 dark:text-zinc-400">
+        <div className="flex items-center justify-between gap-3 px-1">
+          <p className="text-xs text-[#933333]/60 whitespace-nowrap">
             Showing {(currentPage * pageSize + 1).toLocaleString()}–
             {Math.min((currentPage + 1) * pageSize, data.length).toLocaleString()} of{" "}
             {data.length.toLocaleString()}
@@ -224,33 +238,56 @@ export default function DataTable({
             <button
               onClick={() => setCurrentPage(0)}
               disabled={currentPage === 0}
-              className="rounded px-2 py-1 text-xs font-medium text-zinc-600 transition-colors hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-40 dark:text-zinc-400 dark:hover:bg-zinc-800"
+              className="px-2 py-1 text-xs font-bold text-[#933333] transition-colors hover:underline disabled:cursor-not-allowed disabled:opacity-40"
             >
-              First
+              <span className="sr-only">First</span>
+              «
             </button>
             <button
               onClick={() => setCurrentPage((p) => Math.max(0, p - 1))}
               disabled={currentPage === 0}
-              className="rounded p-1 text-zinc-600 transition-colors hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-40 dark:text-zinc-400 dark:hover:bg-zinc-800"
+              className="px-2 py-1 text-[#933333] transition-colors hover:underline disabled:cursor-not-allowed disabled:opacity-40"
             >
               <ChevronLeft className="h-4 w-4" />
             </button>
-            <span className="px-2 text-xs font-medium text-zinc-600 dark:text-zinc-400">
-              {currentPage + 1} / {totalPages}
-            </span>
+
+            {paginationItems.map((item, index) =>
+              item === "..." ? (
+                <span
+                  key={`dots-${index}`}
+                  className="px-1 text-xs font-bold text-[#933333]/50"
+                >
+                  …
+                </span>
+              ) : (
+                <button
+                  key={item}
+                  onClick={() => setCurrentPage(item)}
+                  className={`min-w-7 px-2 py-1 text-xs font-bold transition-colors ${
+                    item === currentPage
+                      ? "border border-[#933333] bg-[#933333] text-[#FFE2C7]"
+                      : "text-[#933333] hover:underline"
+                  }`}
+                >
+                  {item + 1}
+                </button>
+              ),
+            )}
+
             <button
               onClick={() => setCurrentPage((p) => Math.min(totalPages - 1, p + 1))}
               disabled={currentPage >= totalPages - 1}
-              className="rounded p-1 text-zinc-600 transition-colors hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-40 dark:text-zinc-400 dark:hover:bg-zinc-800"
+              className="px-2 py-1 text-[#933333] transition-colors hover:underline disabled:cursor-not-allowed disabled:opacity-40"
             >
               <ChevronRight className="h-4 w-4" />
             </button>
             <button
               onClick={() => setCurrentPage(totalPages - 1)}
               disabled={currentPage >= totalPages - 1}
-              className="rounded px-2 py-1 text-xs font-medium text-zinc-600 transition-colors hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-40 dark:text-zinc-400 dark:hover:bg-zinc-800"
+              className="px-2 py-1 text-xs font-bold text-[#933333] transition-colors hover:underline disabled:cursor-not-allowed disabled:opacity-40"
             >
-              Last
+              <span className="sr-only">Last</span>
+              »
             </button>
           </div>
         </div>
