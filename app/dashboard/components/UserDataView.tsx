@@ -36,11 +36,11 @@ export default function UserDataView({ uploadedTables }: UserDataViewProps) {
     setQueryError(null);
 
     try {
-      const response = await fetch("/api/query", {
+      const response = await fetch("/api/sql", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          question: `Show me all data from the ${tableName} table. Limit to 100 rows.`,
+          sql: `SELECT * FROM "${tableName}";`,
         }),
       });
 

@@ -1,6 +1,9 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import Image from "next/image";
+import Link from "next/link";
+import UserProfileMenu from "@/app/components/UserProfileMenu";
+import { authClient } from "@/lib/auth-client";
 import { Customer, View, TableInfo } from "./types";
 import UploadView from "./components/UploadView";
 import UserDataView from "./components/UserDataView";
@@ -37,9 +40,10 @@ const Page = () => {
   const [deleteCustomerError, setDeleteCustomerError] = useState<string | null>(
     null,
   );
-  const [deletingCustomerId, setDeletingCustomerId] = useState<number | null>(
-    null,
-  );
+  const [deletingCustomerId, setDeletingCustomerId] = useState<
+    Customer["id"] | null
+  >(null);
+  const { data: sessionData } = authClient.useSession();
 
   const selectedCustomer =
     customers.find((customer) => customer.id === selectedCustomerId) || null;
@@ -98,7 +102,7 @@ const Page = () => {
     setUploadedTables(tables);
   };
 
-  const handleDeleteCustomer = async (customerId: number) => {
+  const handleDeleteCustomer = async (customerId: Customer["id"]) => {
     setDeleteCustomerError(null);
     setDeletingCustomerId(customerId);
 
@@ -148,7 +152,7 @@ const Page = () => {
     }
 
     if (activeView === "graphs") {
-      return <GraphsView />;
+      return <GraphsView uploadedTables={uploadedTables} />;
     }
 
     return <InsightsView uploadedTables={uploadedTables} />;
@@ -164,13 +168,28 @@ const Page = () => {
   return (
     <div className="w-screen h-screen bg-[#FFE2C7] overflow-hidden text-[#933333]">
       {/* Header */}
-      <div className="h-[12%] border-b-2 border-[#933333] flex items-center justify-center">
+      <div className="h-[12%] border-b-2 border-[#933333] relative flex items-center justify-center">
         <Image
           src="/WhatsApp_Image_2026-02-09_at_2.10.10_AM-removebg-preview 1.svg"
           alt="Pennyledger"
           width={200}
           height={100}
         />
+        <div className="absolute right-4 flex items-center gap-2">
+          <Link
+            href="/dashboard"
+            className="border-2 border-[#933333] bg-[#933333] px-3 py-1 text-xs font-bold text-[#FFE2C7]"
+          >
+            Dashboard
+          </Link>
+          <Link
+            href="/overview"
+            className="border-2 border-[#933333] px-3 py-1 text-xs font-bold text-[#933333] hover:bg-[#933333]/10"
+          >
+            Overview
+          </Link>
+          <UserProfileMenu auth={sessionData?.user ?? null} />
+        </div>
       </div>
 
       <div className="flex h-[88%]">
