@@ -16,7 +16,7 @@ import path from "path";
 export const getPdfMetadata = tool({
   description:
     "Download the PDF from R2 and extract metadata: page count, file size in bytes, and the text content of the first page. Call this first to understand the PDF structure.",
-  parameters: z.object({
+  inputSchema: z.object({
     pdfKey: z.string().describe("The R2 object key of the PDF file"),
     jobDir: z.string().describe("The local temporary directory for this job"),
   }),

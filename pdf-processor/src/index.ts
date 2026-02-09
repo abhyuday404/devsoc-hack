@@ -100,6 +100,8 @@ async function handleProcess(
       pdfKey,
       jobId: result.jobId,
       csvKey: result.csvKey,
+      scriptKey: result.scriptKey,
+      verified: result.verified,
       steps: result.steps,
       durationMs: result.durationMs,
     });
@@ -109,6 +111,7 @@ async function handleProcess(
       pdfKey,
       jobId: result.jobId,
       error: result.error,
+      verified: result.verified,
       steps: result.steps,
       durationMs: result.durationMs,
     });

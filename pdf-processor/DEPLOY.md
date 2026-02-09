@@ -105,7 +105,7 @@ The server starts on `http://localhost:8080`.
 curl http://localhost:8080/health
 
 # Process a PDF (simulates an R2 webhook payload)
-curl -X POST http://localhost:8080/process \
+iurl -X POST http://localhost:8080/process \
   -H "Content-Type: application/json" \
   -d '{
     "account": "test",

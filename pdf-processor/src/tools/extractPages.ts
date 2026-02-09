@@ -11,7 +11,7 @@ export const extractPages = tool({
     "any tables detected by pdfplumber for each requested page. " +
     "Use this to sample pages and understand the PDF structure before " +
     "generating a parsing script.",
-  parameters: z.object({
+  inputSchema: z.object({
     pdfPath: z
       .string()
       .describe("Absolute path to the PDF file on the local filesystem."),
@@ -21,7 +21,7 @@ export const extractPages = tool({
       .max(20)
       .describe(
         "Array of 0-based page indices to extract. " +
-          "For example, [0, 1, 4, 5] extracts pages 1, 2, 5, and 6."
+          "For example, [0, 1, 4, 5] extracts pages 1, 2, 5, and 6.",
       ),
   }),
   execute: async ({ pdfPath, pageNumbers }): Promise<ExtractPagesResult> => {
@@ -35,7 +35,7 @@ export const extractPages = tool({
     const result = await runHelperScript(
       "extract_pages.py",
       [pdfPath, pageNumsArg],
-      20_000
+      20_000,
     );
 
     if (!result.success) {
@@ -45,7 +45,7 @@ export const extractPages = tool({
         error: result.error,
       });
       throw new Error(
-        `Failed to extract pages: ${result.error ?? "Unknown error"}`
+        `Failed to extract pages: ${result.error ?? "Unknown error"}`,
       );
     }
 
@@ -71,7 +71,7 @@ export const extractPages = tool({
         error: String(parseError),
       });
       throw new Error(
-        `Failed to parse Python output as JSON: ${String(parseError)}`
+        `Failed to parse Python output as JSON: ${String(parseError)}`,
       );
     }
   },

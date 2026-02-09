@@ -15,58 +15,76 @@ import { logger } from "../lib/logger.js";
  */
 export const uploadToR2Tool = tool({
   description:
-    "Upload a generated CSV file to Cloudflare R2 storage. " +
-    "Provide the local path to the CSV file (as returned by executeScript) " +
-    "and the original PDF key so the output key can be derived. " +
-    "Optionally provide a custom output key.",
-  parameters: z.object({
+    "Upload a file to Cloudflare R2 storage. " +
+    "Can upload CSV files, Python scripts, or any other file. " +
+    "Provide the local path to the file and the original PDF key. " +
+    "For CSV files, the output key is auto-derived (csv/filename.csv). " +
+    "For other files (like Python scripts), set customOutputKey explicitly " +
+    "(e.g. 'scripts/filename.py').",
+  inputSchema: z.object({
     csvPath: z
       .string()
-      .describe("Absolute local path to the CSV file to upload."),
+      .describe(
+        "Absolute local path to the file to upload (CSV, Python script, etc.).",
+      ),
     originalPdfKey: z
       .string()
       .describe(
-        "The R2 object key of the source PDF (e.g. 'pdfs/statement.pdf')."
+        "The R2 object key of the source PDF (e.g. 'pdfs/statement.pdf').",
       ),
     customOutputKey: z
       .string()
       .optional()
       .describe(
-        "Optional custom R2 key for the output. If omitted, one is derived from the PDF key."
+        "Optional custom R2 key for the output. If omitted, one is derived from the PDF key.",
       ),
   }),
   execute: async ({ csvPath, originalPdfKey, customOutputKey }) => {
-    logger.info("uploadToR2 tool invoked", { csvPath, originalPdfKey, customOutputKey });
+    logger.info("uploadToR2 tool invoked", {
+      csvPath,
+      originalPdfKey,
+      customOutputKey,
+    });
 
     try {
       // Read the CSV file from disk
-      const csvBuffer = await readFile(csvPath);
+      const fileBuffer = await readFile(csvPath);
 
-      if (csvBuffer.byteLength === 0) {
+      if (fileBuffer.byteLength === 0) {
         return {
           success: false,
-          error: `CSV file is empty: ${csvPath}`,
+          error: `File is empty: ${csvPath}`,
         };
       }
 
       // Derive the output key
-      const outputKey =
-        customOutputKey ?? deriveOutputKey(originalPdfKey);
+      const outputKey = customOutputKey ?? deriveOutputKey(originalPdfKey);
 
-      logger.info("Uploading CSV to R2", {
+      // Determine content type from the file extension
+      const contentType = csvPath.endsWith(".py")
+        ? "text/x-python"
+        : csvPath.endsWith(".csv")
+          ? "text/csv"
+          : "application/octet-stream";
+
+      logger.info("Uploading file to R2", {
         outputKey,
-        sizeBytes: csvBuffer.byteLength,
+        contentType,
+        sizeBytes: fileBuffer.byteLength,
       });
 
-      const result = await r2Upload(outputKey, csvBuffer, "text/csv");
+      const result = await r2Upload(outputKey, fileBuffer, contentType);
 
-      logger.info("Upload complete", { key: result.key, bucket: result.bucket });
+      logger.info("Upload complete", {
+        key: result.key,
+        bucket: result.bucket,
+      });
 
       return {
         success: true,
         key: result.key,
         bucket: result.bucket,
-        size: csvBuffer.byteLength,
+        size: fileBuffer.byteLength,
       };
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);

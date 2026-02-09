@@ -1,5 +1,5 @@
 import { spawn } from "child_process";
-import { writeFile, unlink, mkdir, rm } from "fs/promises";
+import { writeFile, mkdir, rm } from "fs/promises";
 import { randomUUID } from "crypto";
 import path from "path";
 
@@ -7,6 +7,8 @@ export interface PythonResult {
   success: boolean;
   output: string;
   error?: string;
+  /** Path to the saved script file (only set for executePython calls) */
+  scriptPath?: string;
 }
 
 /**
@@ -41,10 +43,10 @@ export async function executePython(
   script: string,
   pdfPath: string,
   jobDir: string,
-  timeoutMs = 30_000
+  timeoutMs = 30_000,
 ): Promise<PythonResult> {
-  const scriptId = randomUUID().slice(0, 8);
-  const scriptPath = path.join(jobDir, `script_${scriptId}.py`);
+  // Save as parser.py so we can upload it to R2 later
+  const scriptPath = path.join(jobDir, "parser.py");
 
   // Prepend helper variables so every generated script can use them
   const preamble = [
@@ -82,22 +84,21 @@ export async function executePython(
     });
 
     proc.on("close", async (code) => {
-      // Clean up the script file (but not the whole job dir — caller does that)
-      await unlink(scriptPath).catch(() => {});
+      // Do NOT delete the script — we need it for R2 upload later
 
       if (code === 0) {
-        resolve({ success: true, output: stdout });
+        resolve({ success: true, output: stdout, scriptPath });
       } else {
         resolve({
           success: false,
           output: stdout,
           error: stderr || `Process exited with code ${code}`,
+          scriptPath,
         });
       }
     });
 
     proc.on("error", async (err) => {
-      await unlink(scriptPath).catch(() => {});
       resolve({
         success: false,
         output: "",
@@ -118,14 +119,14 @@ export async function executePython(
 export async function runHelperScript(
   scriptName: string,
   args: string[],
-  timeoutMs = 15_000
+  timeoutMs = 15_000,
 ): Promise<PythonResult> {
   // Resolve relative to the project root (dist/ or src/ depending on context)
   // In the Docker image, scripts/ is at /app/scripts/
   const scriptPath = path.resolve(
     import.meta.dirname ?? process.cwd(),
     "../../scripts",
-    scriptName
+    scriptName,
   );
 
   return new Promise<PythonResult>((resolve) => {
