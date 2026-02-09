@@ -1,6 +1,7 @@
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
-import * as schema from "@/lib/auth-schema";
+import * as authSchema from "@/lib/auth-schema";
+import * as appSchema from "@/lib/schema";
 
 // Use DATABASE_URL from env
 const connectionString = process.env.DATABASE_URL!;
@@ -13,6 +14,9 @@ const client = postgres(connectionString, {
 
 // Export Drizzle DB instance
 export const db = drizzle(client, {
-  schema,
+  schema: {
+    ...authSchema,
+    ...appSchema,
+  },
   logger: process.env.NODE_ENV === "development",
 });
