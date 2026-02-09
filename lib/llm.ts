@@ -154,6 +154,7 @@ export async function generateSqlQuery(
   const schemaContext = await buildSchemaContext();
 
   const systemPrompt = `You are an expert SQL analyst. You are given a database schema with sample data and a user's question. Your job is to generate a precise SQLite-compatible SQL query that answers the question.
+    Do not just generate the query based on the prompt, look at the column headers and an example entry and make proper regex if necessary.
 
 RULES:
 1. Only generate SELECT statements. Never generate INSERT, UPDATE, DELETE, DROP, ALTER, or any DDL/DML.
@@ -167,28 +168,68 @@ RULES:
 DATABASE SCHEMA:
 ${schemaContext}
 
-You MUST respond with a JSON object in this exact format:
-{
-  "sql": "YOUR SQL QUERY HERE",
-  "explanation": "Brief explanation of what this query does and any assumptions made"
-}`;
+IMPORTANT: Respond with EXACTLY two sections separated by "---EXPLANATION---". First write ONLY the raw SQL query (no markdown fencing, no backticks, no comments). Then write "---EXPLANATION---" on its own line, followed by a brief explanation.
 
+Example response format:
+SELECT "col1", "col2" FROM "my_table" WHERE "col1" > 10 ORDER BY "col1" DESC LIMIT 100
+---EXPLANATION---
+This query selects col1 and col2 from my_table where col1 is greater than 10, ordered descending, limited to 100 rows.`;
+
+  // Do NOT use jsonMode — it causes Gemini to double-escape quotes and
+  // newlines inside the SQL string, producing broken queries like
+  //   SELECT \"col\" FROM \"table\"\nWHERE ...
   const content = await callGemini(systemPrompt, userQuestion, {
     temperature: 0,
     maxTokens: 1000,
-    jsonMode: true,
+    jsonMode: false,
   });
 
   try {
-    const jsonStr = extractJson(content);
-    const parsed = JSON.parse(jsonStr);
+    const trimmed = content.trim();
 
-    if (!parsed.sql || typeof parsed.sql !== "string") {
-      throw new Error("Missing or invalid 'sql' field in LLM response");
+    let sql: string;
+    let explanation: string;
+
+    if (trimmed.includes("---EXPLANATION---")) {
+      const parts = trimmed.split("---EXPLANATION---");
+      sql = parts[0].trim();
+      explanation = parts[1]?.trim() || "Query generated successfully.";
+    } else {
+      // Fallback: try to parse as JSON in case the model still returns JSON
+      try {
+        const jsonStr = extractJson(trimmed);
+        const parsed = JSON.parse(jsonStr);
+        sql = unescapeSql(parsed.sql || "");
+        explanation = parsed.explanation || "Query generated successfully.";
+      } catch {
+        // Last resort: extract raw SQL from the response
+        const sqlMatch = trimmed.match(/(?:SELECT|WITH)[\s\S]+?(?:;|$)/i);
+        if (sqlMatch) {
+          sql = sqlMatch[0].replace(/;?\s*$/, "").trim();
+          explanation = "Query extracted from response.";
+        } else {
+          throw new Error(
+            `Could not extract SQL from LLM response: ${trimmed.substring(0, 300)}`,
+          );
+        }
+      }
+    }
+
+    // Strip any markdown code fences that the model might wrap around the SQL
+    sql = sql
+      .replace(/^```(?:sql)?\s*\n?/i, "")
+      .replace(/\n?\s*```\s*$/i, "")
+      .trim();
+
+    // Clean up any residual escape sequences (belt-and-suspenders)
+    sql = unescapeSql(sql);
+
+    if (!sql) {
+      throw new Error("Generated SQL query is empty.");
     }
 
     // Safety check: reject non-SELECT queries
-    const normalizedSql = parsed.sql.trim().toUpperCase();
+    const normalizedSql = sql.toUpperCase();
     if (
       !normalizedSql.startsWith("SELECT") &&
       !normalizedSql.startsWith("WITH")
@@ -198,28 +239,43 @@ You MUST respond with a JSON object in this exact format:
       );
     }
 
-    return {
-      sql: parsed.sql.trim(),
-      explanation: parsed.explanation || "Query generated successfully.",
-    };
+    return { sql, explanation };
   } catch (error) {
-    if (error instanceof SyntaxError) {
-      // If JSON parsing fails, try to extract SQL from the raw response
-      const sqlMatch = content.match(/(?:SELECT|WITH)[\s\S]+?(?:;|$)/i);
-      if (sqlMatch) {
-        const sql = sqlMatch[0].replace(/;?\s*$/, "").trim();
-        return {
-          sql,
-          explanation:
-            "Query extracted from response (structured parsing failed).",
-        };
-      }
-      throw new Error(
-        `Failed to parse LLM response as JSON: ${content.substring(0, 300)}`,
-      );
+    // If all parsing fails, try one more time to extract SQL
+    const sqlMatch = content.match(/(?:SELECT|WITH)[\s\S]+?(?:;|$)/i);
+    if (sqlMatch) {
+      const sql = unescapeSql(sqlMatch[0].replace(/;?\s*$/, "").trim());
+      return {
+        sql,
+        explanation:
+          "Query extracted from response (structured parsing failed).",
+      };
     }
     throw error;
   }
+}
+
+/**
+ * Recursively unescape a SQL string that may have multiple layers of
+ * JSON-style escaping (\\n → \n → newline, \\\" → \" → ", etc.).
+ */
+function unescapeSql(sql: string): string {
+  let prev = "";
+  let current = sql;
+
+  // Keep replacing until the string stabilises (handles any depth of escaping)
+  for (let i = 0; i < 5 && current !== prev; i++) {
+    prev = current;
+    current = current
+      .replace(/\\n/g, "\n")
+      .replace(/\\t/g, "\t")
+      .replace(/\\r/g, "\r")
+      .replace(/\\"/g, '"')
+      .replace(/\\'/g, "'")
+      .replace(/\\\\/g, "\\");
+  }
+
+  return current;
 }
 
 export async function generateChartConfig(

@@ -389,26 +389,22 @@ export default function DynamicChart({ config, data }: DynamicChartProps) {
     <div className="space-y-3">
       {/* Chart header */}
       <div className="flex items-start justify-between gap-4">
-        <h3 className="text-sm font-semibold text-zinc-800 dark:text-zinc-200">
-          {title}
-        </h3>
-        <span className="inline-flex items-center gap-1 rounded-md bg-zinc-100 px-2 py-0.5 text-xs font-medium text-zinc-600 capitalize dark:bg-zinc-800 dark:text-zinc-400">
+        <h3 className="text-sm font-semibold text-[#933333]">{title}</h3>
+        <span className="inline-flex items-center gap-1 border border-[#933333]/30 bg-[#933333]/5 px-2 py-0.5 text-xs font-medium text-[#933333]/70 capitalize">
           {chartType} chart
         </span>
       </div>
 
       {/* Chart */}
-      <div className="rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-700 dark:bg-zinc-900">
+      <div className="border border-[#933333]/20 bg-white p-4">
         {renderChart()}
       </div>
 
       {/* Insight */}
       {insight && (
-        <div className="flex items-start gap-2 rounded-lg border border-indigo-100 bg-indigo-50 px-3 py-2 dark:border-indigo-900/50 dark:bg-indigo-950/30">
-          <TrendingUp className="mt-0.5 h-4 w-4 flex-shrink-0 text-indigo-500" />
-          <p className="text-sm text-indigo-700 dark:text-indigo-300">
-            {insight}
-          </p>
+        <div className="flex items-start gap-2 border border-[#933333]/30 bg-[#933333]/5 px-3 py-2">
+          <TrendingUp className="mt-0.5 h-4 w-4 flex-shrink-0 text-[#933333]" />
+          <p className="text-sm text-[#933333]">{insight}</p>
         </div>
       )}
     </div>
