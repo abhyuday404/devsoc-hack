@@ -1,17 +1,33 @@
 "use client";
 
-import { DragEvent, useRef, useState } from "react";
-import { TableInfo } from "../types";
+import { DragEvent, useRef, useState, useEffect } from "react";
+import { UploadedFile, TableInfo, Customer } from "../types";
 
 type UploadViewProps = {
   uploadedTables: TableInfo[];
   onUploadSuccess: (tables: TableInfo[]) => void;
+  customerId: Customer["id"] | null;
+  uploadedFiles: UploadedFile[];
+  onRefreshFiles: () => void;
 };
 
 export default function UploadView({
   uploadedTables,
   onUploadSuccess,
+  customerId,
+  uploadedFiles,
+  onRefreshFiles,
 }: UploadViewProps) {
+  // Auto-refresh processing files
+  useEffect(() => {
+    const hasProcessing = uploadedFiles.some((f) => f.status === "processing");
+    if (hasProcessing) {
+      const interval = setInterval(() => {
+        onRefreshFiles();
+      }, 5000);
+      return () => clearInterval(interval);
+    }
+  }, [uploadedFiles, onRefreshFiles]);
   const [isDragging, setIsDragging] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
@@ -25,12 +41,14 @@ export default function UploadView({
     setError(null);
     setSuccessMessage(null);
 
-    const files = Array.from(e.dataTransfer.files).filter((f) =>
-      f.name.toLowerCase().endsWith(".csv"),
+    const files = Array.from(e.dataTransfer.files).filter(
+      (f) =>
+        f.name.toLowerCase().endsWith(".csv") ||
+        f.name.toLowerCase().endsWith(".pdf"),
     );
 
     if (files.length === 0) {
-      setError("Only CSV files are supported. Please drop .csv files.");
+      setError("Only CSV and PDF files are supported.");
       return;
     }
 
@@ -45,16 +63,20 @@ export default function UploadView({
     setError(null);
     setSuccessMessage(null);
     const files = e.target.files ? Array.from(e.target.files) : [];
-    const csvFiles = files.filter((f) => f.name.toLowerCase().endsWith(".csv"));
+    const validFiles = files.filter(
+      (f) =>
+        f.name.toLowerCase().endsWith(".csv") ||
+        f.name.toLowerCase().endsWith(".pdf"),
+    );
 
-    if (csvFiles.length === 0 && files.length > 0) {
-      setError("Only CSV files are supported. Please select .csv files.");
+    if (validFiles.length === 0 && files.length > 0) {
+      setError("Only CSV and PDF files are supported.");
       return;
     }
 
     setSelectedFiles((prev) => {
       const existingNames = new Set(prev.map((f) => f.name));
-      const newFiles = csvFiles.filter((f) => !existingNames.has(f.name));
+      const newFiles = validFiles.filter((f) => !existingNames.has(f.name));
       return [...prev, ...newFiles];
     });
 
@@ -84,10 +106,16 @@ export default function UploadView({
     for (const file of selectedFiles) {
       formData.append("files", file);
     }
+    formData.append("prefix", "uploads");
+    if (customerId) {
+      formData.append("customerId", customerId.toString());
+    }
+
+    // reset is for the local session table list, not the DB
     formData.append("reset", uploadedTables.length === 0 ? "true" : "false");
 
     try {
-      const response = await fetch("/api/upload", {
+      const response = await fetch("/api/upload-r2", {
         method: "POST",
         body: formData,
       });
@@ -102,10 +130,9 @@ export default function UploadView({
       const tables: TableInfo[] = result.tables;
       const allTables = [...uploadedTables, ...tables];
       onUploadSuccess(allTables);
+      onRefreshFiles(); // Refresh the file list from DB
       setSelectedFiles([]);
-      setSuccessMessage(
-        `Successfully uploaded ${tables.length} file${tables.length !== 1 ? "s" : ""}! You can now analyze your data in the View Insights tab.`,
-      );
+      setSuccessMessage(result.message || "Upload successful!");
     } catch (err) {
       setError(
         `Upload failed: ${err instanceof Error ? err.message : "Network error. Please check your connection and try again."}`,
@@ -127,7 +154,7 @@ export default function UploadView({
       const dummyFile = new File([blob], "dummy.csv");
       formData.append("files", dummyFile);
       formData.append("reset", "true");
-      await fetch("/api/upload", { method: "POST", body: formData });
+      await fetch("/api/upload-r2", { method: "POST", body: formData });
     } catch {
       // Ignore reset errors
     }
@@ -179,12 +206,10 @@ export default function UploadView({
         </svg>
         <div className="text-center">
           <p className="font-bold text-lg">
-            {isDragging
-              ? "Drop your CSV files here"
-              : "Drag & drop CSV files here"}
+            {isDragging ? "Drop your files here" : "Drag & drop files here"}
           </p>
           <p className="text-sm text-[#933333]/60 mt-1">
-            or click to browse · Only .csv files · Max 50MB per file
+            or click to browse · CSV or PDF · Max 50MB per file
           </p>
         </div>
       </div>
@@ -192,7 +217,7 @@ export default function UploadView({
       <input
         ref={fileInputRef}
         type="file"
-        accept=".csv"
+        accept=".csv,.pdf"
         multiple
         className="hidden"
         onChange={handleFileSelect}
@@ -344,10 +369,65 @@ export default function UploadView({
         </div>
       )}
 
-      {/* Uploaded tables */}
-      <div className="flex-1 min-h-0 border-2 border-[#933333] p-4 flex flex-col">
+      {/* Uploaded Files History (DB) */}
+      <div className="flex-1 min-h-0 border-2 border-[#933333] p-4 flex flex-col mt-5">
         <div className="flex items-center justify-between mb-3">
-          <h3 className="font-bold text-lg">Uploaded Documents</h3>
+          <h3 className="font-bold text-lg">File History</h3>
+          <button
+            onClick={onRefreshFiles}
+            className="text-xs border border-[#933333]/50 px-3 py-1 text-[#933333] hover:bg-[#933333]/10 transition font-bold"
+          >
+            Refresh
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto">
+          {uploadedFiles.length === 0 ? (
+            <p className="text-[#933333]/60 text-sm font-medium text-center py-5">
+              No files found for this customer.
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {uploadedFiles.map((file) => (
+                <div
+                  key={file.id}
+                  className="border border-[#933333]/40 bg-[#933333]/5 p-3 flex justify-between items-center"
+                >
+                  <div>
+                    <div className="font-bold text-sm">{file.fileName}</div>
+                    <div className="text-xs text-[#933333]/60">
+                      {new Date(file.createdAt).toLocaleString()}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span
+                      className={`text-xs px-2 py-0.5 font-bold uppercase ${
+                        file.status === "completed"
+                          ? "bg-green-200 text-green-800"
+                          : file.status === "processing"
+                            ? "bg-blue-200 text-blue-800"
+                            : file.status === "failed"
+                              ? "bg-red-200 text-red-800"
+                              : "bg-gray-200 text-gray-800"
+                      }`}
+                    >
+                      {file.status}
+                    </span>
+                    <span className="text-xs font-mono uppercase bg-[#FFE2C7] px-1.5 py-0.5 border border-[#933333]/20">
+                      {file.fileType}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Uploaded Tables (Session) */}
+      <div className="flex-1 min-h-0 border-2 border-[#933333] p-4 flex flex-col hidden">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="font-bold text-lg">Session Tables</h3>
           {uploadedTables.length > 0 && (
             <button
               onClick={handleClearAll}

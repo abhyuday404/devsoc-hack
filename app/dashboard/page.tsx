@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import UserProfileMenu from "@/app/components/UserProfileMenu";
 import { authClient } from "@/lib/auth-client";
-import { Customer, View, TableInfo } from "./types";
+import { Customer, View, TableInfo, UploadedFile } from "./types";
 import UploadView from "./components/UploadView";
 import UserDataView from "./components/UserDataView";
 import ProfileView from "./components/ProfileView";
@@ -16,6 +16,7 @@ import {
   addCustomerToCustomerTable,
   deleteCustomerFromCustomerTable,
   viewCustomersFromCustomerTable,
+  getUploadedFilesForCustomer,
 } from "@/app/actions/user-actions";
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
@@ -35,6 +36,7 @@ const Page = () => {
     Customer["id"] | null
   >(null);
   const [uploadedTables, setUploadedTables] = useState<TableInfo[]>([]);
+  const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
   const [addCustomerError, setAddCustomerError] = useState<string | null>(null);
   const [addCustomerLoading, setAddCustomerLoading] = useState(false);
   const [deleteCustomerError, setDeleteCustomerError] = useState<string | null>(
@@ -63,6 +65,26 @@ const Page = () => {
     }
   };
 
+  const loadUploadedFiles = async () => {
+    if (!selectedCustomerId) {
+      setUploadedFiles([]);
+      return;
+    }
+    try {
+      const files = await getUploadedFilesForCustomer(
+        String(selectedCustomerId),
+      );
+      // Cast the result to UploadedFile[]
+      setUploadedFiles(files as unknown as UploadedFile[]);
+    } catch (err) {
+      console.error("Failed to load uploaded files:", err);
+    }
+  };
+
+  useEffect(() => {
+    loadUploadedFiles();
+  }, [selectedCustomerId]);
+
   const handleAddCustomer = async () => {
     const name = newCustomerName.trim();
     if (!name) {
@@ -79,6 +101,7 @@ const Page = () => {
         email: newCustomerEmail.trim() || "unknown@example.com",
         phone: newCustomerPhone.trim() || "+1 (000) 000-0000",
         status: newCustomerStatus.trim() || "Active",
+        userId: sessionData?.user.id || "",
       })) as Customer;
 
       await loadCustomers();
@@ -139,6 +162,9 @@ const Page = () => {
         <UploadView
           uploadedTables={uploadedTables}
           onUploadSuccess={handleUploadSuccess}
+          customerId={selectedCustomerId}
+          uploadedFiles={uploadedFiles}
+          onRefreshFiles={loadUploadedFiles}
         />
       );
     }
