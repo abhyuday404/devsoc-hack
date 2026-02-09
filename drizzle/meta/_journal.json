@@ -15,6 +15,13 @@
       "when": 1770589337107,
       "tag": "0001_futuristic_wither",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1770622723275,
+      "tag": "0002_premium_toad",
+      "breakpoints": true
     }
   ]
 }

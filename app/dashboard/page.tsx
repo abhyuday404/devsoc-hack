@@ -1,39 +1,57 @@
 "use client";
-import React, { useState, DragEvent, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Image from "next/image";
-
-type View = "upload" | "data" | "insights" | "profile";
+import { ChatMessage, Customer, View } from "./types";
+import UploadView from "./components/UploadView";
+import UserDataView from "./components/UserDataView";
+import ProfileView from "./components/ProfileView";
+import InsightsView from "./components/InsightsView";
+import {
+  addCustomerToCustomerTable,
+  viewCustomersFromCustomerTable,
+} from "@/app/actions/user-actions";
 
 const Page = () => {
   const [activeView, setActiveView] = useState<View>("upload");
-  const [isDragging, setIsDragging] = useState(false);
   const [isAddCustomerOpen, setIsAddCustomerOpen] = useState(false);
   const [newCustomerName, setNewCustomerName] = useState("");
   const [newCustomerEmail, setNewCustomerEmail] = useState("");
   const [newCustomerPhone, setNewCustomerPhone] = useState("");
   const [newCustomerStatus, setNewCustomerStatus] = useState("");
-  const [customers, setCustomers] = useState<string[]>([
-    "Ashman",
-    "Nimesha",
-    "Abhyudaya",
-    "Ananya",
-    "Navaneeth",
-    "Jai Shree Ram",
-    "Wowza",
-  ]);
-  const [messages, setMessages] = useState<
-    { role: "user" | "ai"; text: string }[]
-  >([]);
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
-  const [selectedCustomer, setSelectedCustomer] = useState("Ashman");
+  const [selectedCustomerId, setSelectedCustomerId] = useState<number | null>(
+    null,
+  );
+  const [uploadedDocuments, setUploadedDocuments] = useState<string[]>([]);
   const chatContainerRef = useRef<HTMLDivElement>(null);
+  const selectedCustomer =
+    customers.find((customer) => customer.id === selectedCustomerId) || null;
 
-  const handleAddCustomer = () => {
-    if (!newCustomerName.trim()) return;
+  const loadCustomers = async () => {
+    const dbCustomers = (await viewCustomersFromCustomerTable()) as Customer[];
+    setCustomers(dbCustomers);
+    setSelectedCustomerId((prev) =>
+      prev && dbCustomers.some((customer) => customer.id === prev)
+        ? prev
+        : dbCustomers[0]?.id ?? null,
+    );
+  };
 
-    const customerName = newCustomerName.trim();
-    setCustomers((prev) => [...prev, customerName]);
-    setSelectedCustomer(customerName);
+  const handleAddCustomer = async () => {
+    const name = newCustomerName.trim();
+    if (!name) return;
+
+    const createdCustomer = (await addCustomerToCustomerTable({
+      name,
+      email: newCustomerEmail.trim() || "unknown@example.com",
+      phone: newCustomerPhone.trim() || "+1 (000) 000-0000",
+      status: newCustomerStatus.trim() || "Active",
+    })) as Customer;
+
+    await loadCustomers();
+    setSelectedCustomerId(createdCustomer.id);
     setActiveView("profile");
     setNewCustomerName("");
     setNewCustomerEmail("");
@@ -42,16 +60,14 @@ const Page = () => {
     setIsAddCustomerOpen(false);
   };
 
-  /* ---------------- Upload handlers ---------------- */
-  const handleDrop = (e: DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    setIsDragging(false);
-
-    const files = Array.from(e.dataTransfer.files);
-    console.log("Dropped files:", files);
+  const addUploadedDocuments = (files: File[]) => {
+    if (!files.length) return;
+    setUploadedDocuments((prev) => [
+      ...prev,
+      ...files.map((file) => file.name),
+    ]);
   };
 
-  /* ---------------- Chat handlers ---------------- */
   const sendMessage = () => {
     if (!input.trim()) return;
 
@@ -64,6 +80,16 @@ const Page = () => {
   };
 
   useEffect(() => {
+    const initializeCustomers = async () => {
+      const dbCustomers = (await viewCustomersFromCustomerTable()) as Customer[];
+      setCustomers(dbCustomers);
+      setSelectedCustomerId(dbCustomers[0]?.id ?? null);
+    };
+
+    void initializeCustomers();
+  }, []);
+
+  useEffect(() => {
     if (activeView !== "insights") return;
 
     const chatContainer = chatContainerRef.current;
@@ -72,134 +98,41 @@ const Page = () => {
     chatContainer.scrollTop = chatContainer.scrollHeight;
   }, [messages, activeView]);
 
-  /* ---------------- Views ---------------- */
   const renderContent = () => {
     if (activeView === "upload") {
       return (
-        <div
-          onDragOver={(e) => {
-            e.preventDefault();
-            setIsDragging(true);
-          }}
-          onDragLeave={() => setIsDragging(false)}
-          onDrop={handleDrop}
-          onClick={() => document.getElementById("fileUpload")?.click()}
-          className={`flex items-center justify-center w-full h-full
-            border-2 border-dashed border-[#933333]
-            text-[#933333] font-bold
-            cursor-pointer transition
-            ${isDragging ? "bg-[#933333]/10" : ""}`}
-        >
-          Drag files to upload
-        </div>
+        <UploadView
+          uploadedDocuments={uploadedDocuments}
+          onFilesAdded={addUploadedDocuments}
+        />
       );
     }
 
     if (activeView === "data") {
-      return <div className="w-full h-full" />;
+      return <UserDataView customers={customers} />;
     }
 
     if (activeView === "profile") {
-      return (
-        <div className="h-full overflow-y-auto p-6">
-          <div className="border-2 border-[#933333] bg-[#933333]/5 p-6">
-            <h2 className="text-2xl font-bold">{selectedCustomer}</h2>
-            <p className="mt-2 text-sm text-[#933333]/80">
-              Customer profile overview
-            </p>
-
-            <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="border-2 border-[#933333] p-4">
-                <label className="text-xs font-bold uppercase block mb-1">
-                  Email
-                </label>
-                <input
-                  type="email"
-                  placeholder="placeholder@email.com"
-                  className="w-full bg-transparent border-none outline-none"
-                />
-              </div>
-
-              <div className="border-2 border-[#933333] p-4">
-                <label className="text-xs font-bold uppercase block mb-1">
-                  Phone
-                </label>
-                <input
-                  type="tel"
-                  placeholder="+91"
-                  className="w-full bg-transparent border-none outline-none"
-                />
-              </div>
-
-              <div className="border-2 border-[#933333] p-4">
-                <label className="text-xs font-bold uppercase block mb-1">
-                  Status
-                </label>
-                <input
-                  type="text"
-                  placeholder="Active"
-                  className="w-full bg-transparent border-none outline-none"
-                />
-              </div>
-
-              <div className="border-2 border-[#933333] p-4">
-                <label className="text-xs font-bold uppercase block mb-1">
-                  Last Activity
-                </label>
-                <input
-                  type="text"
-                  placeholder="No activity yet"
-                  disabled
-                  className="w-full bg-transparent border-none outline-none opacity-70 cursor-not-allowed"
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-      );
+      return <ProfileView customer={selectedCustomer} />;
     }
 
     return (
-      <div className="flex flex-col w-full h-full min-h-0">
-        <div
-          ref={chatContainerRef}
-          className="flex-1 min-h-0 overflow-y-auto p-4"
-        >
-          <div className="flex min-h-full flex-col justify-end space-y-3">
-            {messages.map((m, i) => (
-              <div
-                key={i}
-                className={`max-w-[70%] p-3 border-2 border-[#933333]
-                ${
-                  m.role === "user"
-                    ? "ml-auto bg-[#933333]/10"
-                    : "mr-auto bg-white"
-                }`}
-              >
-                {m.text}
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="flex gap-2 p-3 border-t-2 border-[#933333]">
-          <input
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && sendMessage()}
-            placeholder="Ask about insights..."
-            className="flex-1 border-2 border-[#933333] p-2 outline-none"
-          />
-          <button
-            onClick={sendMessage}
-            className="border-2 border-[#933333] px-5 font-bold text-[#933333]"
-          >
-            Send
-          </button>
-        </div>
-      </div>
+      <InsightsView
+        messages={messages}
+        input={input}
+        onInputChange={setInput}
+        onSendMessage={sendMessage}
+        chatContainerRef={chatContainerRef}
+      />
     );
   };
+
+  const viewButtonClass = (view: View) =>
+    `border-2 border-[#933333] w-40 h-12 font-bold transition ${
+      activeView === view
+        ? "bg-[#933333] text-[#FFE2C7]"
+        : "text-[#933333] hover:bg-[#933333]/10"
+    }`;
 
   return (
     <div className="w-screen h-screen bg-[#FFE2C7] overflow-hidden text-[#933333]">
@@ -217,29 +150,35 @@ const Page = () => {
         {/* Sidebar */}
         <div className="w-[17%] border-r-2 border-[#933333] flex flex-col min-h-0">
           <div className="p-4 font-bold text-[#933333] border-b-2 border-[#933333]">
-            Documents
+            Customers
           </div>
 
-          <div className="flex-1 overflow-auto">
-            {customers.map((customer, index) => (
+          <div className="flex flex-col overflow-auto">
+            {customers.map((customer) => (
               <div
-                key={`${customer}-${index}`}
+                key={customer.id}
                 onClick={() => {
-                  setSelectedCustomer(customer);
+                  setSelectedCustomerId(customer.id);
                   setActiveView("profile");
                 }}
-                className="px-4 py-3 border-b border-[#933333]/40
-                hover:bg-[#933333]/10 cursor-pointer text-[#933333] text-sm"
+                className="
+                  h-13 px-4
+                  border-b-2 border-[#933333]
+                  hover:bg-[#933333]/10
+                  cursor-pointer
+                  text-[#933333] text-sm
+                  flex items-center
+                "
               >
-                {customer}
+                {customer.name}
               </div>
             ))}
           </div>
 
-          <div className="p-3">
+          <div className="p-3 mt-auto">
             <button
               onClick={() => setIsAddCustomerOpen(true)}
-              className="w-full border-2 border-[#933333] p-4 text-[#933333] font-bold hover:bg-[#933333]/10"
+              className="w-full h-full border-2 mt-auto border-[#933333] p-4 text-[#933333] font-bold hover:bg-[#933333]/10"
             >
               + Add Customer
             </button>
@@ -251,30 +190,29 @@ const Page = () => {
           {/* Top buttons */}
           <div className="flex h-[10%] justify-center items-center gap-5 p-10">
             <button
+              onClick={() => setActiveView("insights")}
+              className={viewButtonClass("insights")}
+            >
+              View Insights
+            </button>
+            <button
               onClick={() => setActiveView("profile")}
-              className="border-2 border-[#933333] w-40 h-12 font-bold text-[#933333]"
+              className={viewButtonClass("profile")}
             >
               Customer Profile
             </button>
             <button
               onClick={() => setActiveView("upload")}
-              className="border-2 border-[#933333] w-40 h-12 font-bold text-[#933333]"
+              className={viewButtonClass("upload")}
             >
               Upload Document
             </button>
 
             <button
               onClick={() => setActiveView("data")}
-              className="border-2 border-[#933333] w-40 h-12 font-bold text-[#933333]"
+              className={viewButtonClass("data")}
             >
               View User Data
-            </button>
-
-            <button
-              onClick={() => setActiveView("insights")}
-              className="border-2 border-[#933333] w-40 h-12 font-bold text-[#933333]"
-            >
-              View Insights
             </button>
           </div>
 
@@ -286,8 +224,6 @@ const Page = () => {
           </div>
         </div>
       </div>
-
-      <input id="fileUpload" type="file" className="hidden" multiple />
 
       {isAddCustomerOpen && (
         <div className="fixed inset-0 bg-[#933333]/30 flex items-center justify-center z-50 p-4">
