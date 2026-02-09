@@ -35,7 +35,7 @@ const Page = () => {
     setSelectedCustomerId((prev) =>
       prev && dbCustomers.some((customer) => customer.id === prev)
         ? prev
-        : dbCustomers[0]?.id ?? null,
+        : (dbCustomers[0]?.id ?? null),
     );
   };
 
@@ -81,7 +81,8 @@ const Page = () => {
 
   useEffect(() => {
     const initializeCustomers = async () => {
-      const dbCustomers = (await viewCustomersFromCustomerTable()) as Customer[];
+      const dbCustomers =
+        (await viewCustomersFromCustomerTable()) as Customer[];
       setCustomers(dbCustomers);
       setSelectedCustomerId(dbCustomers[0]?.id ?? null);
     };
@@ -212,7 +213,7 @@ const Page = () => {
               onClick={() => setActiveView("data")}
               className={viewButtonClass("data")}
             >
-              View User Data
+              Visualize Data
             </button>
           </div>
 
