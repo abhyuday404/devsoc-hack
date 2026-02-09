@@ -94,6 +94,29 @@ async function handleProcess(
     durationMs: result.durationMs,
   });
 
+  // Execute callback if URL is provided
+  if (payload.metadata?.callbackUrl) {
+    try {
+      logger.info("Sending callback", { url: payload.metadata.callbackUrl });
+      await fetch(payload.metadata.callbackUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fileId: payload.metadata.fileId,
+          status: result.success ? "completed" : "failed",
+          resultCsvKey: result.csvKey || null,
+          error: result.error || null,
+        }),
+      });
+      logger.info("Callback sent successfully");
+    } catch (err) {
+      logger.error("Failed to send callback", {
+        url: payload.metadata.callbackUrl,
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }
+
   if (result.success) {
     sendJson(res, 200, {
       status: "success",

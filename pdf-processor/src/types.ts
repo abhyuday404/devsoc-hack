@@ -9,6 +9,10 @@ export interface R2WebhookPayload {
   };
   action: string;
   eventTime: string;
+  metadata?: {
+    fileId: number | null;
+    callbackUrl: string | null;
+  };
 }
 
 /** Result from getPdfMetadata tool */

@@ -17,6 +17,9 @@ importers:
       better-auth:
         specifier: ^1.4.18
         version: 1.4.18(drizzle-kit@0.31.8)(drizzle-orm@0.45.1(kysely@0.28.11)(postgres@3.4.8)(sql.js@1.13.0))(next@16.1.6(@babel/core@7.29.0)(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+      dotenv:
+        specifier: ^17.2.4
+        version: 17.2.4
       drizzle-orm:
         specifier: ^0.45.1
         version: 0.45.1(kysely@0.28.11)(postgres@3.4.8)(sql.js@1.13.0)
@@ -1984,6 +1987,10 @@ packages:
   doctrine@2.1.0:
     resolution: {integrity: sha512-35mSku4ZXK0vfCuHEDAwt55dg2jNajHZ1odvF+8SSr82EsZY4QmXfuWso8oEd8zRhVObSN18aM0CjSdoBX7zIw==}
     engines: {node: '>=0.10.0'}
+
+  dotenv@17.2.4:
+    resolution: {integrity: sha512-mudtfb4zRB4bVvdj0xRo+e6duH1csJRM8IukBqfTRvHotn9+LBXB8ynAidP9zHqoRC/fsllXgk4kCKlR21fIhw==}
+    engines: {node: '>=12'}
 
   drizzle-kit@0.31.8:
     resolution: {integrity: sha512-O9EC/miwdnRDY10qRxM8P3Pg8hXe3LyU4ZipReKOgTwn4OqANmftj8XJz1UPUAS6NMHf0E2htjsbQujUTkncCg==}
@@ -5271,6 +5278,8 @@ snapshots:
   doctrine@2.1.0:
     dependencies:
       esutils: 2.0.3
+
+  dotenv@17.2.4: {}
 
   drizzle-kit@0.31.8:
     dependencies:

@@ -1,8 +1,8 @@
 "use server";
 
 import { db } from "@/lib/db";
-import { customerTable } from "@/lib/schema";
-import { desc, sql } from "drizzle-orm";
+import { customerTable, uploadedFileTable } from "@/lib/schema";
+import { desc, sql, eq } from "drizzle-orm";
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 const PHONE_REGEX = /^\+?[0-9][0-9\s\-()]{7,19}$/;
@@ -12,6 +12,7 @@ type AddCustomerInput = {
   email: string;
   phone: string;
   status: string;
+  userId: string;
 };
 
 export async function addCustomerToCustomerTable(input: AddCustomerInput) {
@@ -19,9 +20,10 @@ export async function addCustomerToCustomerTable(input: AddCustomerInput) {
   const email = input.email.trim();
   const phone = input.phone.trim();
   const status = input.status.trim();
+  const userId = input.userId.trim();
 
-  if (!name || !email || !phone || !status) {
-    throw new Error("Name, email, phone, and status are required.");
+  if (!name || !email || !phone || !status || !userId) {
+    throw new Error("Name, email, phone, status, and userId are required.");
   }
   if (!EMAIL_REGEX.test(email)) {
     throw new Error("Invalid email format.");
@@ -37,14 +39,26 @@ export async function addCustomerToCustomerTable(input: AddCustomerInput) {
       email,
       phone,
       status,
+      userId,
     })
     .returning();
 
-  return createdUser;
+  return {
+    ...createdUser,
+    id: createdUser.id.toString(),
+  };
 }
 
 export async function viewCustomersFromCustomerTable() {
-  return db.select().from(customerTable).orderBy(desc(customerTable.createdAt));
+  const customers = await db
+    .select()
+    .from(customerTable)
+    .orderBy(desc(customerTable.createdAt));
+
+  return customers.map((c) => ({
+    ...c,
+    id: c.id.toString(),
+  }));
 }
 
 export async function deleteCustomerFromCustomerTable(
@@ -64,5 +78,21 @@ export async function deleteCustomerFromCustomerTable(
     throw new Error("Customer not found.");
   }
 
-  return deletedCustomer;
+  return {
+    ...deletedCustomer,
+    id: deletedCustomer.id.toString(),
+  };
+}
+
+export async function getUploadedFilesForCustomer(customerId: number | string) {
+  const files = await db
+    .select()
+    .from(uploadedFileTable)
+    .where(eq(uploadedFileTable.customerId, BigInt(customerId)))
+    .orderBy(desc(uploadedFileTable.createdAt));
+
+  return files.map((f) => ({
+    ...f,
+    customerId: f.customerId.toString(),
+  }));
 }

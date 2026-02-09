@@ -1,4 +1,8 @@
-import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+import {
+  S3Client,
+  PutObjectCommand,
+  GetObjectCommand,
+} from "@aws-sdk/client-s3";
 
 const R2_ACCOUNT_ID = process.env.R2_ACCOUNT_ID!;
 const R2_ACCESS_KEY_ID = process.env.R2_ACCESS_KEY_ID!;
@@ -55,4 +59,18 @@ export async function uploadToR2(
     size: file.size,
     contentType: file.type || "application/octet-stream",
   };
+}
+
+export async function downloadFromR2(key: string): Promise<string> {
+  const command = new GetObjectCommand({
+    Bucket: R2_BUCKET_NAME,
+    Key: key,
+  });
+
+  const response = await r2Client.send(command);
+  if (!response.Body) {
+    throw new Error(`Empty body for key: ${key}`);
+  }
+
+  return response.Body.transformToString("utf-8");
 }
