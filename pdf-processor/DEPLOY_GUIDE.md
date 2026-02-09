@@ -57,7 +57,7 @@ gcloud run deploy pdf-processor \
   --set-env-vars R2_SECRET_ACCESS_KEY=your_r2_secret_key \
   --set-env-vars R2_BUCKET_NAME=your_bucket_name \
   --set-env-vars GOOGLE_GENERATIVE_AI_API_KEY=your_gemini_api_key \
-  --set-env-vars R2_WEBHOOK_SECRET=your_optional_secret
+  --set-env-vars R2_WEBHOOK_SECRET=your_secure_secret_matching_nextjs_app_env
 ```
 
 - **--memory 2Gi**: Recommended for running Python subprocesses and handling large PDFs.

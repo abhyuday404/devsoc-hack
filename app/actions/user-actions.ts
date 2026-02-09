@@ -3,6 +3,8 @@
 import { db } from "@/lib/db";
 import { customerTable, uploadedFileTable } from "@/lib/schema";
 import { desc, sql, eq } from "drizzle-orm";
+import { auth } from "@/lib/auth";
+import { headers } from "next/headers";
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 const PHONE_REGEX = /^\+?[0-9][0-9\s\-()]{7,19}$/;
@@ -50,9 +52,20 @@ export async function addCustomerToCustomerTable(input: AddCustomerInput) {
 }
 
 export async function viewCustomersFromCustomerTable() {
+  const session = await auth.api.getSession({
+    headers: await headers(),
+  });
+
+  const userId = session?.user.id;
+
+  if (!userId) {
+    return [];
+  }
+
   const customers = await db
     .select()
     .from(customerTable)
+    .where(eq(customerTable.userId, userId))
     .orderBy(desc(customerTable.createdAt));
 
   return customers.map((c) => ({
