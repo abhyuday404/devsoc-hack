@@ -136,10 +136,10 @@ export default function UserDataView({ uploadedTables }: UserDataViewProps) {
   return (
     <div className="h-full flex flex-col min-h-0">
       {/* Top section: Table selector + custom query */}
-      <div className="flex-shrink-0 border-b-2 border-[#933333]/20 bg-[#933333]/5 p-4">
+      <div className="shrink-0 border-b-2 border-[#933333]/20 bg-[#933333]/5 p-4">
         <div className="flex flex-wrap items-end gap-4">
           {/* Table selector */}
-          <div className="flex-1 min-w-[200px]">
+          <div className="flex-1 min-w-50">
             <label className="block text-xs font-bold uppercase tracking-wider text-[#933333]/60 mb-1">
               Select Table
             </label>
@@ -222,7 +222,7 @@ export default function UserDataView({ uploadedTables }: UserDataViewProps) {
           <div className="flex items-start gap-3 border-2 border-red-700 bg-red-100/60 p-4 text-red-800 mb-4">
             <svg
               xmlns="http://www.w3.org/2000/svg"
-              className="h-5 w-5 flex-shrink-0 mt-0.5"
+              className="h-5 w-5 shrink-0 mt-0.5"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
@@ -339,7 +339,7 @@ export default function UserDataView({ uploadedTables }: UserDataViewProps) {
           <div className="flex items-start gap-3 border-2 border-red-700 bg-red-100/60 p-4 text-red-800 mb-4">
             <svg
               xmlns="http://www.w3.org/2000/svg"
-              className="h-5 w-5 flex-shrink-0 mt-0.5"
+              className="h-5 w-5 shrink-0 mt-0.5"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"

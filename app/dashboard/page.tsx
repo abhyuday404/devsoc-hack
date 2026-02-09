@@ -6,10 +6,17 @@ import UploadView from "./components/UploadView";
 import UserDataView from "./components/UserDataView";
 import ProfileView from "./components/ProfileView";
 import InsightsView from "./components/InsightsView";
+import GraphsView from "./components/GraphsView";
+import { Trash2, Loader2 } from "lucide-react";
+
 import {
   addCustomerToCustomerTable,
+  deleteCustomerFromCustomerTable,
   viewCustomersFromCustomerTable,
 } from "@/app/actions/user-actions";
+
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+const PHONE_REGEX = /^\+?[0-9][0-9\s\-()]{7,19}$/;
 
 const Page = () => {
   const [activeView, setActiveView] = useState<View>("upload");
@@ -18,13 +25,21 @@ const Page = () => {
   const [newCustomerEmail, setNewCustomerEmail] = useState("");
   const [newCustomerPhone, setNewCustomerPhone] = useState("");
   const [newCustomerStatus, setNewCustomerStatus] = useState("");
+  const [emailError, setEmailError] = useState("");
+  const [phoneError, setPhoneError] = useState("");
   const [customers, setCustomers] = useState<Customer[]>([]);
-  const [selectedCustomerId, setSelectedCustomerId] = useState<number | null>(
-    null,
-  );
+  const [selectedCustomerId, setSelectedCustomerId] = useState<
+    Customer["id"] | null
+  >(null);
   const [uploadedTables, setUploadedTables] = useState<TableInfo[]>([]);
   const [addCustomerError, setAddCustomerError] = useState<string | null>(null);
   const [addCustomerLoading, setAddCustomerLoading] = useState(false);
+  const [deleteCustomerError, setDeleteCustomerError] = useState<string | null>(
+    null,
+  );
+  const [deletingCustomerId, setDeletingCustomerId] = useState<number | null>(
+    null,
+  );
 
   const selectedCustomer =
     customers.find((customer) => customer.id === selectedCustomerId) || null;
@@ -83,6 +98,22 @@ const Page = () => {
     setUploadedTables(tables);
   };
 
+  const handleDeleteCustomer = async (customerId: number) => {
+    setDeleteCustomerError(null);
+    setDeletingCustomerId(customerId);
+
+    try {
+      await deleteCustomerFromCustomerTable(customerId);
+      await loadCustomers();
+    } catch (err) {
+      setDeleteCustomerError(
+        err instanceof Error ? err.message : "Failed to delete customer.",
+      );
+    } finally {
+      setDeletingCustomerId(null);
+    }
+  };
+
   useEffect(() => {
     const initializeCustomers = async () => {
       try {
@@ -116,11 +147,15 @@ const Page = () => {
       return <ProfileView customer={selectedCustomer} />;
     }
 
+    if (activeView === "graphs") {
+      return <GraphsView />;
+    }
+
     return <InsightsView uploadedTables={uploadedTables} />;
   };
 
   const viewButtonClass = (view: View) =>
-    `border-2 border-[#933333] w-40 h-12 font-bold transition ${
+    `border-2 border-[#933333] hover:cursor-pointer w-40 h-12 font-bold transition ${
       activeView === view
         ? "bg-[#933333] text-[#FFE2C7]"
         : "text-[#933333] hover:bg-[#933333]/10"
@@ -167,16 +202,39 @@ const Page = () => {
                     hover:bg-[#933333]/10
                     cursor-pointer
                     text-[#933333] text-sm
-                    flex items-center
+                    flex items-center justify-between gap-2
                     transition
                     ${selectedCustomerId === customer.id && activeView === "profile" ? "bg-[#933333]/10 font-bold" : ""}
                   `}
                 >
-                  {customer.name}
+                  <span className="truncate">{customer.name}</span>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      void handleDeleteCustomer(customer.id);
+                    }}
+                    disabled={deletingCustomerId === customer.id}
+                    className="p-1.5 rounded
+                               hover:bg-[#933333] hover:text-[#FFE2C7]
+                               disabled:opacity-60 disabled:cursor-not-allowed
+                               flex items-center justify-center"
+                    title="Delete"
+                  >
+                    {deletingCustomerId === customer.id ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Trash2 className="w-4 h-4" />
+                    )}
+                  </button>
                 </div>
               ))
             )}
           </div>
+          {deleteCustomerError && (
+            <div className="px-3 py-2 border-t border-[#933333]/30 text-[11px] text-red-700">
+              {deleteCustomerError}
+            </div>
+          )}
 
           {/* Upload status indicator in sidebar */}
           {uploadedTables.length > 0 && (
@@ -231,7 +289,13 @@ const Page = () => {
               onClick={() => setActiveView("data")}
               className={viewButtonClass("data")}
             >
-              Visualize Data
+              View Files
+            </button>
+            <button
+              onClick={() => setActiveView("graphs")}
+              className={viewButtonClass("graphs")}
+            >
+              Visualise Graphs
             </button>
           </div>
 
@@ -280,19 +344,38 @@ const Page = () => {
               autoFocus
             />
             <input
+              type={"email"}
               value={newCustomerEmail}
-              onChange={(e) => setNewCustomerEmail(e.target.value)}
+              onChange={(e) => {
+                const value = e.target.value;
+                setNewCustomerEmail(value);
+                if (!value.trim() || EMAIL_REGEX.test(value.trim())) {
+                  setEmailError("");
+                }
+              }}
               onKeyDown={(e) => e.key === "Enter" && handleAddCustomer()}
               placeholder="Email"
               className="mt-3 w-full border-2 border-[#933333] bg-[#FFE2C7] text-[#933333] p-3 outline-none placeholder:text-[#933333]/70"
             />
+            {emailError && (
+              <p className="mt-1 text-xs text-red-700">{emailError}</p>
+            )}
             <input
               value={newCustomerPhone}
-              onChange={(e) => setNewCustomerPhone(e.target.value)}
+              onChange={(e) => {
+                const value = e.target.value;
+                setNewCustomerPhone(value);
+                if (!value.trim() || PHONE_REGEX.test(value.trim())) {
+                  setPhoneError("");
+                }
+              }}
               onKeyDown={(e) => e.key === "Enter" && handleAddCustomer()}
               placeholder="Phone number"
               className="mt-3 w-full border-2 border-[#933333] bg-[#FFE2C7] text-[#933333] p-3 outline-none placeholder:text-[#933333]/70"
             />
+            {phoneError && (
+              <p className="mt-1 text-xs text-red-700">{phoneError}</p>
+            )}
             <input
               value={newCustomerStatus}
               onChange={(e) => setNewCustomerStatus(e.target.value)}
