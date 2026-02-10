@@ -5,6 +5,7 @@ import { customerTable, uploadedFileTable } from "@/lib/schema";
 import { desc, sql, eq } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
+import { getTableSchemas, sanitizeTableName } from "@/lib/csv-db";
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 const PHONE_REGEX = /^\+?[0-9][0-9\s\-()]{7,19}$/;
@@ -108,4 +109,30 @@ export async function getUploadedFilesForCustomer(customerId: number | string) {
     ...f,
     customerId: f.customerId.toString(),
   }));
+}
+
+export async function getAvailableTables(customerId: number | string) {
+  const files = await getUploadedFilesForCustomer(customerId);
+  const schemas = getTableSchemas();
+  const tables = [];
+  const processedTableNames = new Set<string>();
+
+  for (const file of files) {
+    const tableName = sanitizeTableName(file.fileName);
+    if (processedTableNames.has(tableName)) {
+      continue;
+    }
+
+    const schema = schemas.get(tableName);
+    if (schema) {
+      processedTableNames.add(tableName);
+      tables.push({
+        fileName: file.fileName,
+        tableName: tableName,
+        columns: schema.columns,
+        rowCount: schema.rowCount,
+      });
+    }
+  }
+  return tables;
 }

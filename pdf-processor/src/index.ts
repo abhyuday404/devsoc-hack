@@ -96,22 +96,39 @@ async function handleProcess(
 
   // Execute callback if URL is provided
   if (payload.metadata?.callbackUrl) {
+    const callbackUrl = payload.metadata.callbackUrl;
     try {
-      logger.info("Sending callback", { url: payload.metadata.callbackUrl });
-      await fetch(payload.metadata.callbackUrl, {
+      logger.info("Sending callback", { url: callbackUrl });
+
+      const callbackBody = {
+        fileId: payload.metadata.fileId,
+        status: result.success ? "completed" : "failed",
+        resultCsvKey: result.csvKey || null,
+        error: result.error || null,
+      };
+
+      const callbackRes = await fetch(callbackUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          fileId: payload.metadata.fileId,
-          status: result.success ? "completed" : "failed",
-          resultCsvKey: result.csvKey || null,
-          error: result.error || null,
-        }),
+        body: JSON.stringify(callbackBody),
       });
-      logger.info("Callback sent successfully");
+
+      if (!callbackRes.ok) {
+        const responseText = await callbackRes.text();
+        logger.error("Callback failed with status", {
+          status: callbackRes.status,
+          statusText: callbackRes.statusText,
+          response: responseText,
+          url: callbackUrl,
+        });
+      } else {
+        logger.info("Callback sent successfully", {
+          status: callbackRes.status,
+        });
+      }
     } catch (err) {
       logger.error("Failed to send callback", {
-        url: payload.metadata.callbackUrl,
+        url: callbackUrl,
         error: err instanceof Error ? err.message : String(err),
       });
     }

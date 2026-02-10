@@ -19,6 +19,7 @@ export async function POST(request: NextRequest) {
 
     console.log(
       `Received PDF completion webhook for fileId ${fileId}: ${status}`,
+      { resultCsvKey, error },
     );
 
     // Update the file record in the database
@@ -45,10 +46,30 @@ export async function POST(request: NextRequest) {
           .where(eq(uploadedFileTable.id, fileId));
 
         if (fileRecord) {
-          const tableName = sanitizeTableName(fileRecord.fileName);
+          // Create a new file record for the generated CSV so it appears in the dashboard
+          const csvFileName = fileRecord.fileName.replace(/\.pdf$/i, ".csv");
+
+          const tableName = sanitizeTableName(csvFileName);
           console.log(`Loading CSV into analytics DB table: ${tableName}`);
           await loadCsvIntoDb(csvContent, tableName);
           console.log("CSV loaded successfully.");
+
+          // Check for duplicates
+          const [existingCsv] = await db
+            .select()
+            .from(uploadedFileTable)
+            .where(eq(uploadedFileTable.r2Key, resultCsvKey));
+
+          if (!existingCsv) {
+            await db.insert(uploadedFileTable).values({
+              customerId: fileRecord.customerId,
+              fileName: csvFileName,
+              r2Key: resultCsvKey,
+              fileType: "csv",
+              status: "completed",
+            });
+            console.log(`Created new CSV file record: ${csvFileName}`);
+          }
         } else {
           console.warn(
             `File record ${fileId} not found, using generic table name.`,

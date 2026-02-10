@@ -2,13 +2,15 @@
 
 import { DragEvent, useRef, useState, useEffect } from "react";
 import { UploadedFile, TableInfo, Customer } from "../types";
+import { Loader2 } from "lucide-react";
 
 type UploadViewProps = {
   uploadedTables: TableInfo[];
   onUploadSuccess: (tables: TableInfo[]) => void;
   customerId: Customer["id"] | null;
   uploadedFiles: UploadedFile[];
-  onRefreshFiles: () => void;
+  onRefreshFiles: (force?: boolean) => void;
+  isLoading?: boolean;
 };
 
 export default function UploadView({
@@ -17,13 +19,14 @@ export default function UploadView({
   customerId,
   uploadedFiles,
   onRefreshFiles,
+  isLoading = false,
 }: UploadViewProps) {
   // Auto-refresh processing files
   useEffect(() => {
     const hasProcessing = uploadedFiles.some((f) => f.status === "processing");
     if (hasProcessing) {
       const interval = setInterval(() => {
-        onRefreshFiles();
+        onRefreshFiles(true);
       }, 5000);
       return () => clearInterval(interval);
     }
@@ -130,7 +133,7 @@ export default function UploadView({
       const tables: TableInfo[] = result.tables;
       const allTables = [...uploadedTables, ...tables];
       onUploadSuccess(allTables);
-      onRefreshFiles(); // Refresh the file list from DB
+      onRefreshFiles(true); // Refresh the file list from DB
       setSelectedFiles([]);
       setSuccessMessage(result.message || "Upload successful!");
     } catch (err) {
@@ -374,7 +377,7 @@ export default function UploadView({
         <div className="flex items-center justify-between mb-3">
           <h3 className="font-bold text-lg">File History</h3>
           <button
-            onClick={onRefreshFiles}
+            onClick={() => onRefreshFiles(true)}
             className="text-xs border border-[#933333]/50 px-3 py-1 text-[#933333] hover:bg-[#933333]/10 transition font-bold"
           >
             Refresh
@@ -382,7 +385,12 @@ export default function UploadView({
         </div>
 
         <div className="flex-1 overflow-y-auto">
-          {uploadedFiles.length === 0 ? (
+          {isLoading ? (
+            <div className="flex items-center justify-center p-8 text-[#933333]/60">
+              <Loader2 className="w-6 h-6 animate-spin mr-2" />
+              <span className="text-sm font-bold">Loading files...</span>
+            </div>
+          ) : uploadedFiles.length === 0 ? (
             <p className="text-[#933333]/60 text-sm font-medium text-center py-5">
               No files found for this customer.
             </p>
