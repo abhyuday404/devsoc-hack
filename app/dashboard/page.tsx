@@ -85,6 +85,10 @@ const Page = () => {
     loadUploadedFiles();
   }, [selectedCustomerId]);
 
+  useEffect(() => {
+    setUploadedTables([]);
+  }, [selectedCustomerId]);
+
   const handleAddCustomer = async () => {
     const name = newCustomerName.trim();
     if (!name) {
@@ -239,17 +243,16 @@ const Page = () => {
                   key={customer.id}
                   onClick={() => {
                     setSelectedCustomerId(customer.id);
-                    setActiveView("profile");
                   }}
                   className={`
                     h-13 px-4
                     border-b-2 border-[#933333]
-                    hover:bg-[#933333]/10
+                    hover:bg-[#933333]/50 hover:text-[#FFE2C7]
                     cursor-pointer
                     text-[#933333] text-sm
                     flex items-center justify-between gap-2
                     transition
-                    ${selectedCustomerId === customer.id && activeView === "profile" ? "bg-[#933333]/10 font-bold" : ""}
+                    ${selectedCustomerId === customer.id ? "bg-[#933333] text-[#FFE2C7] font-bold" : ""}
                   `}
                 >
                   <span className="truncate">{customer.name}</span>
@@ -311,6 +314,15 @@ const Page = () => {
         <div className="flex flex-col flex-1 min-h-0">
           {/* Top buttons */}
           <div className="flex h-[10%] justify-center items-center gap-5 p-10">
+            <div className="mr-auto text-xs font-bold text-[#933333]/70">
+              {selectedCustomer ? (
+                <span>
+                  Selected: <span className="text-[#933333]">{selectedCustomer.name}</span>
+                </span>
+              ) : (
+                <span className="text-red-700">No customer selected</span>
+              )}
+            </div>
             <button
               onClick={() => setActiveView("insights")}
               className={viewButtonClass("insights")}
