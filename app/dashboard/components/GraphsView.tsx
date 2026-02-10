@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import DynamicChart from "@/components/DynamicChart";
-import type { ChartConfig, TableInfo } from "../types";
+import type { ChartConfig, TableInfo, Customer } from "../types";
 
 type GraphsViewProps = {
   uploadedTables: TableInfo[];
+  customerId: Customer["id"] | null;
 };
 
 type QueryChartResult = {
@@ -65,19 +66,58 @@ function buildFallbackConfig(
   };
 }
 
-export default function GraphsView({ uploadedTables }: GraphsViewProps) {
-  const [cards, setCards] = useState<GraphCardState[]>(
+export default function GraphsView({
+  uploadedTables,
+  customerId,
+}: GraphsViewProps) {
+  const createInitialCards = () =>
     INITIAL_CARD_TYPES.map((chartType) => ({
       prompt: "",
       loading: false,
       error: null,
       result: null,
       chartType,
-    })),
-  );
+    }));
+
+  const loadStoredCards = (key: string): GraphCardState[] | null => {
+    if (typeof window === "undefined") return null;
+    try {
+      const stored = window.localStorage.getItem(key);
+      if (!stored) return null;
+      const parsed = JSON.parse(stored) as GraphCardState[];
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed;
+      }
+    } catch {
+      // Ignore storage errors
+    }
+    return null;
+  };
   const [expandedCardIndex, setExpandedCardIndex] = useState<number | null>(
     null,
   );
+
+  const storageKey = `graphsView:${customerId ?? "none"}`;
+
+  const [cards, setCards] = useState<GraphCardState[]>(() => {
+    const stored = loadStoredCards(storageKey);
+    return stored ?? createInitialCards();
+  });
+
+  useEffect(() => {
+    const stored = loadStoredCards(storageKey);
+    setCards(stored ?? createInitialCards());
+    setExpandedCardIndex(null);
+  }, [storageKey]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      window.localStorage.setItem(storageKey, JSON.stringify(cards));
+    } catch {
+      // Ignore storage errors
+    }
+  }, [cards, storageKey]);
 
   const hasData = uploadedTables.length > 0;
 

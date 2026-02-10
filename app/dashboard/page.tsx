@@ -211,7 +211,12 @@ const Page = () => {
     }
 
     if (activeView === "graphs") {
-      return <GraphsView uploadedTables={uploadedTables} />;
+      return (
+        <GraphsView
+          uploadedTables={uploadedTables}
+          customerId={selectedCustomerId}
+        />
+      );
     }
 
     return <InsightsView uploadedTables={uploadedTables} />;
@@ -235,7 +240,7 @@ const Page = () => {
           height={100}
         />
         <div className="absolute right-4 flex items-center gap-2">
-          <Link
+          {/*<Link
             href="/dashboard"
             className="border-2 border-[#933333] bg-[#933333] px-3 py-1 text-xs font-bold text-[#FFE2C7]"
           >
@@ -246,7 +251,7 @@ const Page = () => {
             className="border-2 border-[#933333] px-3 py-1 text-xs font-bold text-[#933333] hover:bg-[#933333]/10"
           >
             Overview
-          </Link>
+          </Link>*/}
           <UserProfileMenu auth={sessionData?.user ?? null} />
         </div>
       </div>
