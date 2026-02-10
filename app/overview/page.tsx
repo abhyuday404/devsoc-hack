@@ -42,6 +42,9 @@ export default function OverviewPage() {
         <UploadView
           uploadedTables={uploadedTables}
           onUploadSuccess={handleUploadSuccess}
+          customerId={null}
+          uploadedFiles={[]}
+          onRefreshFiles={() => {}}
         />
       );
     }
@@ -51,7 +54,7 @@ export default function OverviewPage() {
     }
 
     if (activeView === "graphs") {
-      return <GraphsView uploadedTables={uploadedTables} />;
+      return <GraphsView uploadedTables={uploadedTables} customerId={null} />;
     }
 
     return <InsightsView uploadedTables={uploadedTables} />;
