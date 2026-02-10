@@ -90,8 +90,8 @@ cd pdf-processor
 # Build the container
 docker build -t pdf-processor .
 
-# Run locally on port 8080
-docker run -p 8080:8080 --env-file .env pdf-processor
+# Run locally on port 8080 (Linux/Mac/Windows compatible)
+docker run -p 8080:8080 --env-file .env --add-host=host.docker.internal:host-gateway pdf-processor
 ```
 
 ### Trigger Webhook (Test)

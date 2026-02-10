@@ -109,6 +109,18 @@ export async function POST(request: NextRequest) {
           // Trigger PDF Processor (Fire-and-forget)
           const pdfProcessorUrl = process.env.PDF_PROCESSOR_URL;
           if (pdfProcessorUrl) {
+            // Determine callback URL
+            let appUrl = process.env.APP_URL;
+            if (!appUrl) {
+              // Try to infer or use a sensible default for local dev
+              appUrl = "http://host.docker.internal:3000";
+              console.warn(
+                `APP_URL not set, defaulting to ${appUrl} for PDF processor callback. Ensure you run docker with --add-host=host.docker.internal:host-gateway on Linux.`,
+              );
+            }
+
+            const callbackUrl = `${appUrl}/api/webhook/pdf-complete`;
+
             fetch(pdfProcessorUrl, {
               method: "POST",
               headers: {
@@ -127,9 +139,7 @@ export async function POST(request: NextRequest) {
                 // Pass fileId and callback URL for status updates
                 metadata: {
                   fileId,
-                  callbackUrl: process.env.APP_URL
-                    ? `${process.env.APP_URL}/api/webhook/pdf-complete`
-                    : null,
+                  callbackUrl,
                 },
               }),
             }).catch((err) => {
