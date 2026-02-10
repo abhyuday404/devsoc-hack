@@ -23,9 +23,9 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#FFE2C7] p-6 text-[#933333]">
-      <div className="w-full max-w-sm border-2 border-[#933333] bg-[#FFE2C7] p-8">
-        <h1 className="text-2xl font-bold mb-2">Sign in</h1>
+    <div className="min-h-screen flex items-center justify-center bg-[#FFE2C7] p-4 text-[#933333] md:p-6">
+      <div className="w-full max-w-sm border-2 border-[#933333] bg-[#FFE2C7] p-6 md:p-8">
+        <h1 className="text-xl font-bold mb-2 md:text-2xl">Sign in</h1>
 
         <p className="text-sm text-[#933333]/80 mb-6">
           Continue with your Google account

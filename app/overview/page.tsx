@@ -23,7 +23,7 @@ export default function OverviewPage() {
   };
 
   const viewButtonClass = (view: OverviewView) =>
-    `border-2 border-[#933333] hover:cursor-pointer w-40 h-12 font-bold transition ${
+    `border-2 border-[#933333] hover:cursor-pointer w-full max-w-[220px] h-11 font-bold transition md:w-40 md:h-12 md:max-w-none ${
       activeView === view
         ? "bg-[#933333] text-[#FFE2C7]"
         : "text-[#933333] hover:bg-[#933333]/10"
@@ -61,15 +61,16 @@ export default function OverviewPage() {
   };
 
   return (
-    <div className="w-screen h-screen bg-[#FFE2C7] overflow-hidden text-[#933333]">
-      <div className="h-[12%] border-b-2 border-[#933333] relative flex items-center justify-center">
+    <div className="w-full min-h-screen bg-[#FFE2C7] text-[#933333] overflow-y-auto md:w-screen md:h-screen md:overflow-hidden">
+      <div className="border-b-2 border-[#933333] relative flex flex-col items-center justify-center gap-3 px-4 py-4 md:h-[12%] md:flex-row md:gap-0 md:px-0 md:py-0">
         <Image
           src="/WhatsApp_Image_2026-02-09_at_2.10.10_AM-removebg-preview 1.svg"
           alt="Pennyledger"
           width={200}
           height={100}
+          className="h-auto w-36 md:w-[200px]"
         />
-        <div className="absolute right-4 flex items-center gap-2">
+        <div className="flex w-full flex-wrap items-center justify-center gap-2 md:absolute md:right-4 md:w-auto">
           <Link
             href="/dashboard"
             className="border-2 border-[#933333] px-3 py-1 text-xs font-bold text-[#933333] hover:bg-[#933333]/10"
@@ -86,8 +87,8 @@ export default function OverviewPage() {
         </div>
       </div>
 
-      <div className="flex h-[88%]">
-        <div className="w-[17%] border-r-2 border-[#933333] flex flex-col min-h-0">
+      <div className="flex flex-col md:flex-row md:h-[88%]">
+        <div className="w-full border-b-2 border-[#933333] flex flex-col min-h-0 md:w-[17%] md:border-b-0 md:border-r-2">
           <div className="p-4 font-bold text-[#933333] border-b-2 border-[#933333]">
             Lender Overview
           </div>
@@ -123,7 +124,7 @@ export default function OverviewPage() {
         </div>
 
         <div className="flex flex-col flex-1 min-h-0">
-          <div className="flex h-[10%] justify-center items-center gap-5 p-10">
+          <div className="flex flex-wrap items-center justify-center gap-2 px-4 py-3 md:h-[10%] md:gap-5 md:p-10">
             <button
               onClick={() => setActiveView("insights")}
               className={viewButtonClass("insights")}
@@ -150,8 +151,8 @@ export default function OverviewPage() {
             </button>
           </div>
 
-          <div className="flex-1 min-h-0 px-10 pb-10">
-            <div className="w-full h-full border-2 border-[#933333] min-h-0 overflow-hidden flex flex-col">
+          <div className="flex-1 min-h-0 px-4 pb-4 md:px-10 md:pb-10">
+            <div className="w-full border-2 border-[#933333] min-h-[60vh] md:h-full md:min-h-0 overflow-hidden flex flex-col">
               {renderContent()}
             </div>
           </div>
