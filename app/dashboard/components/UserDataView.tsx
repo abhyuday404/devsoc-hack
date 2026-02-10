@@ -1,12 +1,21 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { TableInfo } from "../types";
 import DataTable from "@/components/DataTable";
 
 type UserDataViewProps = {
   uploadedTables: TableInfo[];
 };
+
+type ModalData = {
+  title: string;
+  subtitle?: string;
+  sql?: string;
+  columns: string[];
+  data: Record<string, string | number | null>[];
+  totalRows: number;
+} | null;
 
 export default function UserDataView({ uploadedTables }: UserDataViewProps) {
   const [selectedTable, setSelectedTable] = useState<string | null>(null);
@@ -26,6 +35,34 @@ export default function UserDataView({ uploadedTables }: UserDataViewProps) {
   } | null>(null);
   const [queryLoading, setQueryLoading] = useState(false);
   const [queryError, setQueryError] = useState<string | null>(null);
+  const [modalData, setModalData] = useState<ModalData>(null);
+
+  const closeModal = useCallback(() => {
+    setModalData(null);
+  }, []);
+
+  // Close modal on Escape key
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && modalData) {
+        closeModal();
+      }
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [modalData, closeModal]);
+
+  // Prevent body scroll when modal is open
+  useEffect(() => {
+    if (modalData) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [modalData]);
 
   const loadTablePreview = async (tableName: string) => {
     setSelectedTable(tableName);
@@ -102,6 +139,29 @@ export default function UserDataView({ uploadedTables }: UserDataViewProps) {
     }
   };
 
+  const openTablePreviewModal = () => {
+    if (!tableData || !selectedTable) return;
+    setModalData({
+      title: selectedTable,
+      subtitle: `Showing ${tableData.data.length} of ${tableData.totalRows} row${tableData.totalRows !== 1 ? "s" : ""}`,
+      columns: tableData.columns,
+      data: tableData.data,
+      totalRows: tableData.totalRows,
+    });
+  };
+
+  const openQueryResultModal = () => {
+    if (!queryResult) return;
+    setModalData({
+      title: "Query Result",
+      subtitle: `${queryResult.totalRows} row${queryResult.totalRows !== 1 ? "s" : ""}`,
+      sql: queryResult.sql,
+      columns: queryResult.columns,
+      data: queryResult.data,
+      totalRows: queryResult.totalRows,
+    });
+  };
+
   // No data state
   if (uploadedTables.length === 0) {
     return (
@@ -135,6 +195,94 @@ export default function UserDataView({ uploadedTables }: UserDataViewProps) {
 
   return (
     <div className="h-full flex flex-col min-h-0 ">
+      {/* Fullscreen Modal */}
+      {modalData && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 sm:p-6 md:p-10"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) closeModal();
+          }}
+        >
+          <div className="relative flex flex-col w-full h-full max-w-[95vw] max-h-[92vh] bg-[#FFE2C7] border-2 border-[#933333] shadow-2xl overflow-hidden">
+            {/* Modal header */}
+            <div className="shrink-0 flex items-center justify-between px-5 py-3 border-b-2 border-[#933333]/20 bg-[#933333]/5">
+              <div className="flex items-center gap-3">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-5 w-5 text-[#933333]"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"
+                  />
+                </svg>
+                <div>
+                  <h2 className="text-lg font-bold text-[#933333]">
+                    {modalData.title}
+                  </h2>
+                  {modalData.subtitle && (
+                    <p className="text-xs text-[#933333]/50">
+                      {modalData.subtitle}
+                    </p>
+                  )}
+                </div>
+              </div>
+              <button
+                onClick={closeModal}
+                className="flex items-center gap-1.5 border-2 border-[#933333] px-3 py-1.5 text-sm font-bold text-[#933333] transition hover:bg-[#933333] hover:text-[#FFE2C7]"
+                title="Close (Esc)"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-4 w-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+                Close
+              </button>
+            </div>
+
+            {/* Modal SQL bar */}
+            {modalData.sql && (
+              <div className="shrink-0 px-5 py-2 border-b border-[#933333]/10 bg-[#3a1111]">
+                <pre className="text-xs text-[#FFE2C7] whitespace-pre-wrap">
+                  {modalData.sql}
+                </pre>
+              </div>
+            )}
+
+            {/* Modal table content */}
+            <div className="flex-1 min-h-0 overflow-auto p-4 bg-white">
+              {modalData.columns.length > 0 && modalData.data.length > 0 ? (
+                <DataTable
+                  columns={modalData.columns}
+                  data={modalData.data}
+                  maxHeight="calc(92vh - 160px)"
+                  pageSize={100}
+                />
+              ) : (
+                <div className="p-6 text-center text-sm text-[#933333]/50">
+                  No data to display.
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Top section: Table selector + custom query */}
       <div className="shrink-0 border-b-2 border-[#933333]/20 bg-[#933333]/5 p-4">
         <div className="flex flex-wrap items-end gap-4">
@@ -274,12 +422,38 @@ export default function UserDataView({ uploadedTables }: UserDataViewProps) {
                   {queryResult.totalRows !== 1 ? "s" : ""}
                 </span>
               </div>
-              <button
-                onClick={() => setQueryResult(null)}
-                className="text-[#933333]/50 hover:text-[#933333] font-bold text-lg leading-none"
-              >
-                ×
-              </button>
+              <div className="flex items-center gap-2">
+                {queryResult.columns.length > 0 &&
+                  queryResult.data.length > 0 && (
+                    <button
+                      onClick={openQueryResultModal}
+                      className="flex items-center gap-1.5 border-2 border-[#933333] px-3 py-1 text-xs font-bold text-[#933333] transition hover:bg-[#933333] hover:text-[#FFE2C7]"
+                      title="View in fullscreen"
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="h-3.5 w-3.5"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                        strokeWidth={2}
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5v-4m0 4h-4m4 0l-5-5"
+                        />
+                      </svg>
+                      Expand
+                    </button>
+                  )}
+                <button
+                  onClick={() => setQueryResult(null)}
+                  className="text-[#933333]/50 hover:text-[#933333] font-bold text-lg leading-none"
+                >
+                  ×
+                </button>
+              </div>
             </div>
             {queryResult.sql && (
               <div className="px-4 py-2 border-b border-[#933333]/10 bg-[#3a1111]">
@@ -367,28 +541,53 @@ export default function UserDataView({ uploadedTables }: UserDataViewProps) {
         {/* Table data preview */}
         {tableData && !loading && (
           <div className="border-2 border-[#933333]/30">
-            <div className="flex items-center gap-2 px-4 py-2 border-b-2 border-[#933333]/20 bg-[#933333]/5">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-4 w-4 text-[#933333]"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={2}
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"
-                />
-              </svg>
-              <span className="text-sm font-bold text-[#933333]">
-                {selectedTable}
-              </span>
-              <span className="text-xs text-[#933333]/50">
-                Showing {tableData.data.length} of {tableData.totalRows} row
-                {tableData.totalRows !== 1 ? "s" : ""}
-              </span>
+            <div className="flex items-center justify-between px-4 py-2 border-b-2 border-[#933333]/20 bg-[#933333]/5">
+              <div className="flex items-center gap-2">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-4 w-4 text-[#933333]"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"
+                  />
+                </svg>
+                <span className="text-sm font-bold text-[#933333]">
+                  {selectedTable}
+                </span>
+                <span className="text-xs text-[#933333]/50">
+                  Showing {tableData.data.length} of {tableData.totalRows} row
+                  {tableData.totalRows !== 1 ? "s" : ""}
+                </span>
+              </div>
+              {tableData.columns.length > 0 && tableData.data.length > 0 && (
+                <button
+                  onClick={openTablePreviewModal}
+                  className="flex items-center gap-1.5 border-2 border-[#933333] px-3 py-1 text-xs font-bold text-[#933333] transition hover:bg-[#933333] hover:text-[#FFE2C7]"
+                  title="View in fullscreen"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-3.5 w-3.5"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth={2}
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5v-4m0 4h-4m4 0l-5-5"
+                    />
+                  </svg>
+                  Expand
+                </button>
+              )}
             </div>
             <div className="bg-white">
               {tableData.columns.length > 0 && tableData.data.length > 0 ? (
