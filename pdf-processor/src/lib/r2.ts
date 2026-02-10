@@ -2,6 +2,7 @@ import {
   S3Client,
   GetObjectCommand,
   PutObjectCommand,
+  ListObjectsV2Command,
 } from "@aws-sdk/client-s3";
 import { writeFile } from "fs/promises";
 import type { Readable } from "stream";
@@ -22,7 +23,7 @@ const BUCKET = process.env.R2_BUCKET_NAME ?? "devsoc";
  */
 export async function downloadFromR2(
   key: string,
-  destPath: string
+  destPath: string,
 ): Promise<void> {
   console.log(`[r2] Downloading s3://${BUCKET}/${key} → ${destPath}`);
 
@@ -43,7 +44,7 @@ export async function downloadFromR2(
 
   await writeFile(destPath, buffer);
   console.log(
-    `[r2] Downloaded ${key} (${(buffer.byteLength / 1024).toFixed(1)} KB)`
+    `[r2] Downloaded ${key} (${(buffer.byteLength / 1024).toFixed(1)} KB)`,
   );
 }
 
@@ -53,7 +54,7 @@ export async function downloadFromR2(
 export async function uploadToR2(
   key: string,
   body: string | Buffer,
-  contentType = "text/csv"
+  contentType = "text/csv",
 ): Promise<{ key: string; bucket: string }> {
   console.log(`[r2] Uploading → s3://${BUCKET}/${key}`);
 
@@ -71,4 +72,65 @@ export async function uploadToR2(
   console.log(`[r2] Uploaded ${key} (${(size / 1024).toFixed(1)} KB)`);
 
   return { key, bucket: BUCKET };
+}
+
+/**
+ * List all object keys in R2 under a given prefix.
+ * Returns an array of key strings (e.g. ["scripts/hdfc.py", "scripts/icici.py"]).
+ */
+export async function listR2Objects(prefix: string): Promise<string[]> {
+  console.log(`[r2] Listing objects with prefix: ${prefix}`);
+
+  const keys: string[] = [];
+  let continuationToken: string | undefined;
+
+  do {
+    const command = new ListObjectsV2Command({
+      Bucket: BUCKET,
+      Prefix: prefix,
+      ContinuationToken: continuationToken,
+    });
+
+    const response = await r2.send(command);
+
+    if (response.Contents) {
+      for (const obj of response.Contents) {
+        if (obj.Key) {
+          keys.push(obj.Key);
+        }
+      }
+    }
+
+    continuationToken = response.IsTruncated
+      ? response.NextContinuationToken
+      : undefined;
+  } while (continuationToken);
+
+  console.log(`[r2] Found ${keys.length} objects under "${prefix}"`);
+  return keys;
+}
+
+/**
+ * Download an object from R2 and return its content as a UTF-8 string.
+ * Useful for fetching Python scripts stored in R2.
+ */
+export async function downloadR2AsText(key: string): Promise<string> {
+  console.log(`[r2] Downloading as text: s3://${BUCKET}/${key}`);
+
+  const command = new GetObjectCommand({ Bucket: BUCKET, Key: key });
+  const response = await r2.send(command);
+
+  if (!response.Body) {
+    throw new Error(`[r2] Empty response body for key: ${key}`);
+  }
+
+  const chunks: Uint8Array[] = [];
+  const stream = response.Body as Readable;
+  for await (const chunk of stream) {
+    chunks.push(typeof chunk === "string" ? Buffer.from(chunk) : chunk);
+  }
+
+  const text = Buffer.concat(chunks).toString("utf-8");
+  console.log(`[r2] Downloaded ${key} as text (${text.length} chars)`);
+  return text;
 }
