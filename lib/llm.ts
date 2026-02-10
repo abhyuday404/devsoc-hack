@@ -164,7 +164,8 @@ RULES:
 5. Keep the result set reasonably sized — use LIMIT if appropriate (max 1000 rows).
 6. If the question is ambiguous, make a reasonable assumption and mention it in your explanation.
 7. If the question cannot be answered with the given schema, explain why.
-
+8. When creating an SQL query, only give the query, DO NOT give any natural text responses.
+9. The table names may or may not be the exact same as the prompt, use the closest named table.
 DATABASE SCHEMA:
 ${schemaContext}
 

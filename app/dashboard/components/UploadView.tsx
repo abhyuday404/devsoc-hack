@@ -212,7 +212,7 @@ export default function UploadView({
             {isDragging ? "Drop your files here" : "Drag & drop files here"}
           </p>
           <p className="text-sm text-[#933333]/60 mt-1">
-            or click to browse · CSV or PDF · Max 50MB per file
+            or click to browse
           </p>
         </div>
       </div>
