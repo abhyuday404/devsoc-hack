@@ -326,7 +326,7 @@ export default function GraphsView({
               onClick={() => setExpandedCardIndex(null)}
             >
               <div
-                className="w-full max-w-6xl h-[65vh] border-2 border-[#933333] bg-[#FFE2C7] p-4 flex flex-col"
+                className="w-full max-w-[95vw] md:max-w-6xl h-[80vh] md:h-[65vh] border-2 border-[#933333] bg-[#FFE2C7] p-4 flex flex-col"
                 onClick={(e) => e.stopPropagation()}
               >
                 <div className="flex items-center justify-between border-b border-[#933333]/20 pb-2">

@@ -19,13 +19,13 @@ export default function CsvAnalytics() {
   const hasData = tables.length > 0;
 
   return (
-    <div className="flex h-screen w-full overflow-hidden bg-zinc-50 dark:bg-zinc-950">
+    <div className="flex min-h-screen w-full overflow-y-auto bg-zinc-50 dark:bg-zinc-950 md:h-screen md:overflow-hidden">
       {/* Sidebar */}
       <aside
-        className={`flex flex-col border-r border-zinc-200 bg-white transition-all duration-300 dark:border-zinc-800 dark:bg-zinc-900 ${
+        className={`fixed inset-y-0 left-0 z-40 flex flex-col border-r border-zinc-200 bg-white shadow-xl transition-all duration-300 dark:border-zinc-800 dark:bg-zinc-900 md:static md:inset-auto md:z-auto md:shadow-none md:translate-x-0 ${
           sidebarOpen
-            ? "w-[380px] min-w-[380px]"
-            : "w-0 min-w-0 overflow-hidden"
+            ? "translate-x-0 w-[85%] max-w-[360px] md:w-[380px] md:min-w-[380px]"
+            : "-translate-x-full w-[85%] max-w-[360px] md:w-0 md:min-w-0 md:overflow-hidden"
         }`}
       >
         {/* Sidebar header */}

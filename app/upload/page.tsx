@@ -58,13 +58,13 @@ export default function UploadPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#FFE2C7] text-[#933333] p-8 font-sans">
+    <div className="min-h-screen bg-[#FFE2C7] text-[#933333] p-4 font-sans md:p-8">
       <div className="max-w-2xl mx-auto">
-        <h1 className="text-3xl font-bold mb-8 border-b-2 border-[#933333] pb-2">
+        <h1 className="text-2xl font-bold mb-6 border-b-2 border-[#933333] pb-2 md:text-3xl md:mb-8">
           File Upload
         </h1>
 
-        <div className="bg-[#FFE2C7] border-2 border-[#933333] p-6 shadow-md">
+        <div className="bg-[#FFE2C7] border-2 border-[#933333] p-4 shadow-md md:p-6">
           <form onSubmit={handleUpload} className="space-y-6">
             <div>
               <label htmlFor="files" className="block text-sm font-bold mb-2">
