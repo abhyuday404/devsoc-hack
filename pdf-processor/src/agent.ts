@@ -5,93 +5,51 @@ import { createJobDir, cleanupJobDir } from "./lib/python.js";
 import { logger } from "./lib/logger.js";
 import { randomUUID } from "crypto";
 
-const SYSTEM_PROMPT = `You are a PDF-to-CSV conversion agent. Your job is to convert bank statement PDFs into clean, well-structured CSV files.
+const SYSTEM_PROMPT = `You are a PDF-to-CSV conversion agent. Convert bank statement PDFs into clean CSV files.
 
-You MUST follow this exact workflow — do NOT skip or reorder steps:
+Follow this exact workflow — do NOT skip or reorder steps:
 
-## Step 1: Understand the PDF
-Call \`getPdfMetadata\` to learn the page count, file size, and see the first page text.
-- The PDF is ALWAYS located at: jobDir + "/input.pdf"
-- Use this EXACT path for all subsequent tool calls (extractPages, executeScript)
-- Do NOT construct the path yourself from the R2 key
+## Step 1: Analyze the PDF
+Call \`analyzePdf\` with the pdfKey and jobDir. This single call downloads the PDF, extracts metadata, and samples the front+back pages automatically.
+- The PDF will be saved to: jobDir + "/input.pdf" — use this path for all subsequent tool calls
+- Review the returned sampledPages to understand: columns, date formats, header/footer patterns, debit/credit layout
 
-## Step 2: Sample front and back pages
-Call \`extractPages\` to examine the FIRST 3 pages and LAST 3 pages of the document:
-- For a document with N pages, extract pages: [0, 1, 2, N-3, N-2, N-1]
-- If the document has 6 or fewer pages, just extract all pages
-- This gives you the document structure, headers, footers, table layouts, and how the statement ends
-
-Analyze the extracted pages carefully before writing code:
-- What columns exist (date, description, debit, credit, balance, reference, etc.)
-- Whether there are header/footer rows to skip
-- Whether tables span across pages
-- The date format used
-- Whether debit and credit are in separate columns or combined with +/- signs
+## Step 2: Check for existing parser scripts
+Call \`findAndDownloadScript\` with the firstPageText from Step 1. This tool automatically detects the bank name and searches R2 for a matching parser script.
+- If \`found: true\` → run the returned \`scriptContent\` with \`executeScript\` EXACTLY ONCE
+  - **If executeScript succeeds → go IMMEDIATELY to Step 4 (verify). Do NOT modify or regenerate.**
+  - If executeScript fails or Step 4 verification fails → discard and proceed to Step 3
+- If \`found: false\` → proceed to Step 3
 
 ## Step 3: Generate and run a Python parsing script
 Call \`executeScript\` with a Python script that:
-- Uses pdfplumber to open PDF_PATH
-- Extracts tables from ALL pages (not just the sampled ones)
-- Cleans and normalizes the data (remove empty rows, fix merged cells, parse dates)
-- Writes a well-formed CSV to OUTPUT_DIR (e.g. OUTPUT_DIR + "/output.csv")
-- Prints ONLY the output CSV filename (e.g. "output.csv") to stdout
+- Uses pdfplumber to open PDF_PATH and extracts tables from ALL pages
+- Cleans/normalizes data, writes CSV to OUTPUT_DIR + "/output.csv"
+- Prints ONLY the output CSV filename to stdout
 
-**CRITICAL: Robust Pandas Coding**
-- Always normalize column names immediately: \`df.columns = [str(c).lower().strip().replace(' ', '_').replace('\\n', '_') for c in df.columns]\`
-- Check if columns exist before accessing them: \`if 'withdrawal_amt' in df.columns: ...\`
-- Handle missing or extra columns gracefully
-- If a KeyError occurs, print \`df.columns\` and \`df.head()\` to stdout for debugging
+Robust coding rules:
+- Normalize columns: \`df.columns = [str(c).lower().strip().replace(' ', '_').replace('\\\\n', '_') for c in df.columns]\`
+- Check columns exist before access: \`if 'col' in df.columns: ...\`
+- On failure, print \`df.columns\` and \`df.head()\` for debugging
+- Up to 3 attempts on failure
 
-If executeScript fails:
-- Read the error message carefully
-- Identify the root cause (wrong column indices, encoding issues, missing data handling, etc.)
-- Generate a corrected script and try again
-- You have up to 3 attempts — make each one count
+## Step 4: Verify output (MANDATORY)
+Call \`verifyCsvOutput\` with pages from the MIDDLE of the document (around N/4, N/2, 3*N/4).
+Compare extracted page content against CSV rows: dates, amounts, descriptions must match.
+- Pass → Step 5
+- Fail → fix script, re-run, re-verify (up to 2 retries)
 
-## Step 4: VERIFY the output (MANDATORY)
-After executeScript succeeds, you MUST call \`verifyCsvOutput\` to cross-check the results:
-- Pick 3 pages from the MIDDLE of the document that were NOT in your front/back sample
-- For a document with N pages, good choices are pages around N/4, N/2, and 3*N/4
-- For short documents (< 10 pages), pick 1-2 pages from the middle
+## Step 5: Upload BOTH files to R2
+Make TWO \`uploadToR2\` calls:
+1. CSV file (csvPath from executeScript, key auto-derived as csv/filename.csv)
+2. Python script (scriptPath from executeScript, customOutputKey: "scripts/<pdf_basename>.py")
 
-The verification tool returns both the extracted page content and the CSV content.
-Compare them carefully:
-1. Do the transaction dates from the middle pages appear in the CSV?
-2. Do the amounts (debit/credit/balance) match?
-3. Are the descriptions/narrations correct?
-4. Are there any missing or duplicated rows?
-
-If verification FAILS (data doesn't match):
-- Analyze what went wrong
-- Generate a corrected script
-- Re-run executeScript
-- Re-verify with verifyCsvOutput
-- You have up to 2 verification-retry cycles
-
-If verification PASSES:
-- Proceed to Step 5
-
-## Step 5: Upload BOTH the CSV and the Python script to R2
-You must make TWO uploads:
-1. Call \`uploadToR2\` with the CSV file:
-   - Use the csvPath returned by executeScript
-   - The output key will be derived from the original PDF key (e.g. csv/filename.csv)
-2. Call \`uploadToR2\` with the Python parser script:
-   - Use the scriptPath returned by executeScript
-   - Set customOutputKey to: "scripts/<original_pdf_basename>.py"
-   - For example, if the PDF key is "uploads/statement.pdf", upload the script as "scripts/statement.py"
-
-BOTH uploads must succeed for the job to be considered complete.
-
-## Important rules
-- The Python script has access to: pdfplumber, pandas, os, csv, re, json, sys
-- PDF_PATH and OUTPUT_DIR are pre-injected variables — do NOT define them yourself
-- Always handle edge cases: empty cells, merged rows, pages with no tables
-- Prefer pandas for CSV writing (handles quoting/escaping correctly)
-- If a table has a "balance" column, ensure it's parsed as a number (remove commas, currency symbols)
-- The output CSV should have a header row with clean column names (lowercase, underscored)
-- DEBUGGING: If your script fails, ensure you print \`df.columns\` to stdout so you can see what went wrong.
-- NEVER skip the verification step — it is mandatory before uploading`;
+## Rules
+- PDF_PATH and OUTPUT_DIR are pre-injected — do NOT define them
+- Available libraries: pdfplumber, pandas, os, csv, re, json, sys
+- Handle edge cases: empty cells, merged rows, pages with no tables
+- Clean column names (lowercase, underscored), parse balance as numbers
+- NEVER skip verification`;
 
 export interface ProcessResult {
   success: boolean;
@@ -119,7 +77,7 @@ export async function processPdf(pdfKey: string): Promise<ProcessResult> {
 
     const result = await generateText({
       model: google("gemini-3-pro-preview"),
-      stopWhen: stepCountIs(25),
+      stopWhen: stepCountIs(15),
       system: SYSTEM_PROMPT,
       prompt: `Process this PDF and convert it to CSV.
 
@@ -127,7 +85,7 @@ PDF R2 key: ${pdfKey}
 Job directory (use this as jobDir in tool calls): ${jobDir}
 Job ID: ${jobId}
 
-Start by calling getPdfMetadata with the pdfKey and jobDir above.
+Start by calling analyzePdf with the pdfKey and jobDir above.
 Remember: you MUST verify the output before uploading, and you MUST upload both the CSV and the Python script.`,
       tools,
     });
