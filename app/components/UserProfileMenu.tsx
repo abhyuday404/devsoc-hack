@@ -51,7 +51,7 @@ export default function UserProfileMenu({ auth }: UserProfileMenuProps) {
     <div ref={menuRef} className="relative">
       <button
         onClick={() => setOpen((prev) => !prev)}
-        className="h-9 w-9 rounded-full border-2 border-[#933333] bg-[#933333] text-[#FFE2C7] font-bold text-sm flex items-center justify-center overflow-hidden hover:bg-[#7b2b2b]"
+        className="h-11 w-11 rounded-full border-2 border-[#933333] bg-[#933333] text-[#FFE2C7] font-bold text-sm flex items-center justify-center overflow-hidden hover:bg-[#7b2b2b]"
         aria-label="Open profile menu"
       >
         {userImage ? (
