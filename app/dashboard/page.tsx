@@ -113,6 +113,10 @@ const Page = () => {
     void loadUploadedFiles();
   }, [loadUploadedFiles]);
 
+  useEffect(() => {
+    setUploadedTables([]);
+  }, [selectedCustomerId]);
+
   const handleAddCustomer = async () => {
     const name = newCustomerName.trim();
     if (!name) {
@@ -268,17 +272,16 @@ const Page = () => {
                   key={customer.id}
                   onClick={() => {
                     setSelectedCustomerId(customer.id);
-                    setActiveView("profile");
                   }}
                   className={`
                     h-13 px-4
                     border-b-2 border-[#933333]
-                    hover:bg-[#933333]/10
+                    hover:bg-[#933333]/50 hover:text-[#FFE2C7]
                     cursor-pointer
                     text-[#933333] text-sm
                     flex items-center justify-between gap-2
                     transition
-                    ${selectedCustomerId === customer.id && activeView === "profile" ? "bg-[#933333]/10 font-bold" : ""}
+                    ${selectedCustomerId === customer.id ? "bg-[#933333] text-[#FFE2C7] font-bold" : ""}
                   `}
                 >
                   <span className="truncate">{customer.name}</span>
