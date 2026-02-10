@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "CSV Analytics — SQL-Powered Data Analysis",
+  title: "Pennyledger",
   description:
     "Upload CSV files and ask questions in natural language. An LLM generates SQL queries to analyze your data and produces insightful charts automatically.",
 };

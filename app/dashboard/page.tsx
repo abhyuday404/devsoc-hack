@@ -162,7 +162,7 @@ const Page = () => {
     setDeletingCustomerId(customerId);
 
     try {
-      await deleteCustomerFromCustomerTable(customerId);
+      await deleteCustomerFromCustomerTable(String(customerId));
       await loadCustomers();
     } catch (err) {
       setDeleteCustomerError(
