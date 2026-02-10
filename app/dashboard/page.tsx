@@ -1,10 +1,10 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import UserProfileMenu from "@/app/components/UserProfileMenu";
 import { authClient } from "@/lib/auth-client";
-import { Customer, View, TableInfo } from "./types";
+import { Customer, View, TableInfo, UploadedFile } from "./types";
 import UploadView from "./components/UploadView";
 import UserDataView from "./components/UserDataView";
 import ProfileView from "./components/ProfileView";
@@ -16,6 +16,8 @@ import {
   addCustomerToCustomerTable,
   deleteCustomerFromCustomerTable,
   viewCustomersFromCustomerTable,
+  getUploadedFilesForCustomer,
+  getAvailableTables,
 } from "@/app/actions/user-actions";
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
@@ -35,6 +37,7 @@ const Page = () => {
     Customer["id"] | null
   >(null);
   const [uploadedTables, setUploadedTables] = useState<TableInfo[]>([]);
+  const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
   const [addCustomerError, setAddCustomerError] = useState<string | null>(null);
   const [addCustomerLoading, setAddCustomerLoading] = useState(false);
   const [deleteCustomerError, setDeleteCustomerError] = useState<string | null>(
@@ -63,6 +66,57 @@ const Page = () => {
     }
   };
 
+  const [areFilesLoading, setAreFilesLoading] = useState(false);
+  const lastFetchedCustomerId = useRef<Customer["id"] | null>(null);
+
+  const loadUploadedFiles = React.useCallback(
+    async (force = false) => {
+      if (!selectedCustomerId) {
+        setUploadedFiles([]);
+        setUploadedTables([]);
+        lastFetchedCustomerId.current = null;
+        return;
+      }
+
+      // If not forcing a refresh and we already fetched for this customer, do nothing.
+      if (!force && lastFetchedCustomerId.current === selectedCustomerId) {
+        return;
+      }
+
+      setAreFilesLoading(true);
+      try {
+        const files = await getUploadedFilesForCustomer(
+          String(selectedCustomerId),
+        );
+        // Cast the result to UploadedFile[]
+        setUploadedFiles(files as unknown as UploadedFile[]);
+
+        // Also load available tables (processed CSVs)
+        const tables = await getAvailableTables(String(selectedCustomerId));
+        setUploadedTables(tables);
+
+        // Update cache tracker
+        lastFetchedCustomerId.current = selectedCustomerId;
+      } catch (err) {
+        console.error("Failed to load uploaded files:", err);
+      } finally {
+        setAreFilesLoading(false);
+      }
+    },
+    [selectedCustomerId],
+  );
+
+  useEffect(() => {
+    // When selectedCustomerId changes, we want to load.
+    // The useCallback dependency ensures this runs when ID changes.
+    // We pass false (or nothing) to use the cache check inside.
+    void loadUploadedFiles();
+  }, [loadUploadedFiles]);
+
+  useEffect(() => {
+    setUploadedTables([]);
+  }, [selectedCustomerId]);
+
   const handleAddCustomer = async () => {
     const name = newCustomerName.trim();
     if (!name) {
@@ -79,6 +133,7 @@ const Page = () => {
         email: newCustomerEmail.trim() || "unknown@example.com",
         phone: newCustomerPhone.trim() || "+1 (000) 000-0000",
         status: newCustomerStatus.trim() || "Active",
+        userId: sessionData?.user.id || "",
       })) as Customer;
 
       await loadCustomers();
@@ -139,6 +194,10 @@ const Page = () => {
         <UploadView
           uploadedTables={uploadedTables}
           onUploadSuccess={handleUploadSuccess}
+          customerId={selectedCustomerId}
+          uploadedFiles={uploadedFiles}
+          onRefreshFiles={() => loadUploadedFiles(true)}
+          isLoading={areFilesLoading}
         />
       );
     }
@@ -213,17 +272,16 @@ const Page = () => {
                   key={customer.id}
                   onClick={() => {
                     setSelectedCustomerId(customer.id);
-                    setActiveView("profile");
                   }}
                   className={`
                     h-13 px-4
                     border-b-2 border-[#933333]
-                    hover:bg-[#933333]/10
+                    hover:bg-[#933333]/50 hover:text-[#FFE2C7]
                     cursor-pointer
                     text-[#933333] text-sm
                     flex items-center justify-between gap-2
                     transition
-                    ${selectedCustomerId === customer.id && activeView === "profile" ? "bg-[#933333]/10 font-bold" : ""}
+                    ${selectedCustomerId === customer.id ? "bg-[#933333] text-[#FFE2C7] font-bold" : ""}
                   `}
                 >
                   <span className="truncate">{customer.name}</span>
@@ -282,46 +340,70 @@ const Page = () => {
         </div>
 
         {/* Main */}
-        <div className="flex flex-col flex-1 min-h-0">
-          {/* Top buttons */}
-          <div className="flex h-[10%] justify-center items-center gap-5 p-10">
-            <button
-              onClick={() => setActiveView("insights")}
-              className={viewButtonClass("insights")}
-            >
-              View Insights
-            </button>
-            <button
-              onClick={() => setActiveView("profile")}
-              className={viewButtonClass("profile")}
-            >
-              Customer Profile
-            </button>
-            <button
-              onClick={() => setActiveView("upload")}
-              className={viewButtonClass("upload")}
-            >
-              Upload Document
-            </button>
+        <div className="flex flex-col flex-1 min-h-0 relative">
+          {(!selectedCustomerId || customers.length === 0) && (
+            <div className="absolute inset-0 z-20 flex flex-col items-center justify-center text-[#933333]">
+              <div className="bg-[#FFE2C7] p-8 border-2 border-[#933333] shadow-lg flex flex-col items-center">
+                <p className="text-xl font-bold mb-4">No Customer Selected</p>
+                <p className="mb-6 text-center max-w-sm">
+                  Please select a customer from the sidebar or add a new
+                  customer to view dashboard insights.
+                </p>
+                <div className="flex items-center gap-2 animate-pulse font-bold">
+                  <span className="text-2xl">←</span>
+                  <span>Start by adding a customer</span>
+                </div>
+              </div>
+            </div>
+          )}
 
-            <button
-              onClick={() => setActiveView("data")}
-              className={viewButtonClass("data")}
-            >
-              View Files
-            </button>
-            <button
-              onClick={() => setActiveView("graphs")}
-              className={viewButtonClass("graphs")}
-            >
-              Visualise Graphs
-            </button>
-          </div>
+          <div
+            className={`flex flex-col flex-1 min-h-0 transition-all duration-300 ${
+              !selectedCustomerId || customers.length === 0
+                ? "opacity-20 pointer-events-none blur-[2px]"
+                : ""
+            }`}
+          >
+            {/* Top buttons */}
+            <div className="flex h-[10%] justify-center items-center gap-5 p-10">
+              <button
+                onClick={() => setActiveView("insights")}
+                className={viewButtonClass("insights")}
+              >
+                View Insights
+              </button>
+              <button
+                onClick={() => setActiveView("profile")}
+                className={viewButtonClass("profile")}
+              >
+                Customer Profile
+              </button>
+              <button
+                onClick={() => setActiveView("upload")}
+                className={viewButtonClass("upload")}
+              >
+                Upload Document
+              </button>
 
-          {/* Content */}
-          <div className="flex-1 min-h-0 px-10 pb-10">
-            <div className="w-full h-full border-2 border-[#933333] min-h-0 overflow-hidden flex flex-col">
-              {renderContent()}
+              <button
+                onClick={() => setActiveView("data")}
+                className={viewButtonClass("data")}
+              >
+                View Files
+              </button>
+              <button
+                onClick={() => setActiveView("graphs")}
+                className={viewButtonClass("graphs")}
+              >
+                Visualise Graphs
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="flex-1 min-h-0 px-10 pb-10">
+              <div className="w-full h-full border-2 border-[#933333] min-h-0 overflow-hidden flex flex-col">
+                {renderContent()}
+              </div>
             </div>
           </div>
         </div>

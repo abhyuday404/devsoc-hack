@@ -286,7 +286,7 @@ export default function GraphsView({ uploadedTables }: GraphsViewProps) {
               onClick={() => setExpandedCardIndex(null)}
             >
               <div
-                className="w-full max-w-6xl h-[85vh] border-2 border-[#933333] bg-[#FFE2C7] p-4 flex flex-col"
+                className="w-full max-w-6xl h-[65vh] border-2 border-[#933333] bg-[#FFE2C7] p-4 flex flex-col"
                 onClick={(e) => e.stopPropagation()}
               >
                 <div className="flex items-center justify-between border-b border-[#933333]/20 pb-2">
@@ -301,12 +301,15 @@ export default function GraphsView({ uploadedTables }: GraphsViewProps) {
                   </button>
                 </div>
 
-                <div className="mt-3 border border-[#933333]/20 bg-[#933333]/5 p-2 text-[11px] text-[#933333]/80 whitespace-pre-wrap">
+                {/*<div className="mt-3 border border-[#933333]/20 bg-[#933333]/5 p-2 text-[11px] text-[#933333]/80 whitespace-pre-wrap">
                   {expandedCard.result.sql}
-                </div>
+                </div>*/}
 
                 <div className="flex-1 min-h-0 mt-3">
-                  <DynamicChart config={expandedConfig} data={expandedCard.result.data} />
+                  <DynamicChart
+                    config={expandedConfig}
+                    data={expandedCard.result.data}
+                  />
                 </div>
               </div>
             </div>

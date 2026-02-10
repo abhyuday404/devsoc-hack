@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { QueryMessage, TableInfo, ChartConfig } from "../types";
-import DynamicChart from "@/components/DynamicChart";
-import DataTable from "@/components/DataTable";
 
 type InsightsViewProps = {
   uploadedTables: TableInfo[];
@@ -247,7 +247,7 @@ export default function InsightsView({ uploadedTables }: InsightsViewProps) {
               </svg>
               <p className="text-sm text-[#933333]/70 font-medium">
                 Ask anything about your data — I&apos;ll write SQL, run it, and
-                show you results with charts.
+                answer in plain language.
               </p>
             </div>
 
@@ -328,8 +328,8 @@ export default function InsightsView({ uploadedTables }: InsightsViewProps) {
           </button>
         </div>
         <p className="mt-1 text-center text-[10px] text-[#933333]/40">
-          AI generates SQL queries to analyze your data. Always verify results
-          for accuracy.
+          AI analyzes your data and responds in plain language. Always verify
+          results for accuracy.
         </p>
       </div>
     </div>
@@ -345,22 +345,6 @@ function MessageBubble({
   message: QueryMessage;
   onRetry: (question: string) => void;
 }) {
-  const [showSql, setShowSql] = useState(false);
-  const [showTable, setShowTable] = useState(false);
-  const [copiedSql, setCopiedSql] = useState(false);
-
-  const handleCopySql = async () => {
-    if (message.sql) {
-      try {
-        await navigator.clipboard.writeText(message.sql);
-        setCopiedSql(true);
-        setTimeout(() => setCopiedSql(false), 2000);
-      } catch {
-        // Fallback for non-HTTPS
-      }
-    }
-  };
-
   // User message
   if (message.type === "user") {
     return (
@@ -479,183 +463,52 @@ function MessageBubble({
   // Assistant response
   return (
     <div className="flex justify-start">
-      <div className="max-w-[90%] w-full space-y-4 border-2 border-[#933333]/30 bg-white/50 px-4 py-3">
+      <div className="max-w-[90%] w-full space-y-3 border-2 border-[#933333]/30 bg-white/50 px-4 py-3">
         {/* Natural language answer */}
         {message.answer && (
-          <div className="text-sm text-[#933333] leading-relaxed whitespace-pre-wrap">
-            {message.answer}
-          </div>
-        )}
-
-        {/* SQL toggle */}
-        {message.sql && (
-          <div className="space-y-2">
-            <button
-              onClick={() => setShowSql(!showSql)}
-              className="flex items-center gap-1.5 text-xs font-bold text-[#933333]/60 hover:text-[#933333] transition px-2 py-1 border border-[#933333]/20 hover:bg-[#933333]/5"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className={`h-3 w-3 transition-transform ${showSql ? "rotate-90" : ""}`}
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={2}
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M9 5l7 7-7 7"
-                />
-              </svg>
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-3 w-3"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={2}
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"
-                />
-              </svg>
-              SQL Query
-              {message.explanation && (
-                <span className="font-normal text-[#933333]/40 ml-1">
-                  — {message.explanation}
-                </span>
-              )}
-            </button>
-
-            {showSql && (
-              <div className="relative">
-                <pre className="overflow-x-auto bg-[#3a1111] text-[#FFE2C7] p-3 text-xs leading-relaxed whitespace-pre-wrap border-2 border-[#933333]">
-                  <code>{message.sql}</code>
+          <ReactMarkdown
+            remarkPlugins={[remarkGfm]}
+            components={{
+              p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
+              ul: ({ children }) => (
+                <ul className="list-disc pl-5 mb-2 last:mb-0">{children}</ul>
+              ),
+              ol: ({ children }) => (
+                <ol className="list-decimal pl-5 mb-2 last:mb-0">{children}</ol>
+              ),
+              li: ({ children }) => <li className="mb-1">{children}</li>,
+              strong: ({ children }) => (
+                <strong className="font-bold text-[#7b2b2b]">{children}</strong>
+              ),
+              code: ({ children }) => (
+                <code className="px-1 py-0.5 bg-[#933333]/10 text-[#7b2b2b]">
+                  {children}
+                </code>
+              ),
+              pre: ({ children }) => (
+                <pre className="overflow-x-auto bg-[#933333]/10 p-2 text-xs leading-relaxed">
+                  {children}
                 </pre>
-                <button
-                  onClick={handleCopySql}
-                  className="absolute right-2 top-2 bg-[#933333]/80 text-[#FFE2C7] p-1.5 hover:bg-[#933333] transition"
-                  title="Copy SQL"
+              ),
+              a: ({ children, href }) => (
+                <a
+                  href={href}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="underline underline-offset-2"
                 >
-                  {copiedSql ? (
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="h-3.5 w-3.5"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                      strokeWidth={2}
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        d="M5 13l4 4L19 7"
-                      />
-                    </svg>
-                  ) : (
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="h-3.5 w-3.5"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                      strokeWidth={2}
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
-                      />
-                    </svg>
-                  )}
-                </button>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Chart visualization */}
-        {message.chartConfig && message.data && message.data.length > 0 && (
-          <div className="space-y-2">
-            <div className="flex items-center gap-1.5 px-2 text-xs font-bold text-[#933333]/60">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-3.5 w-3.5"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={2}
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
-                />
-              </svg>
-              Visualization
-            </div>
-            <div className="border border-[#933333]/20 bg-white p-2">
-              <DynamicChart config={message.chartConfig} data={message.data} />
-            </div>
-          </div>
-        )}
-
-        {/* Data table toggle */}
-        {message.columns && message.data && message.data.length > 0 && (
-          <div className="space-y-2">
-            <button
-              onClick={() => setShowTable(!showTable)}
-              className="flex items-center gap-1.5 text-xs font-bold text-[#933333]/60 hover:text-[#933333] transition px-2 py-1 border border-[#933333]/20 hover:bg-[#933333]/5"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className={`h-3 w-3 transition-transform ${showTable ? "rotate-90" : ""}`}
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={2}
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M9 5l7 7-7 7"
-                />
-              </svg>
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-3.5 w-3.5"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={2}
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"
-                />
-              </svg>
-              Data Table
-              <span className="font-normal text-[#933333]/40 ml-1">
-                ({message.rowCount?.toLocaleString()} row
-                {message.rowCount !== 1 ? "s" : ""})
-              </span>
-            </button>
-
-            {showTable && (
-              <div className="border border-[#933333]/20 bg-white overflow-hidden">
-                <DataTable
-                  columns={message.columns}
-                  data={message.data}
-                  maxHeight="350px"
-                  pageSize={25}
-                />
-              </div>
-            )}
-          </div>
+                  {children}
+                </a>
+              ),
+              blockquote: ({ children }) => (
+                <blockquote className="border-l-2 border-[#933333]/40 pl-3 text-[#933333]/80">
+                  {children}
+                </blockquote>
+              ),
+            }}
+          >
+            {message.answer}
+          </ReactMarkdown>
         )}
       </div>
     </div>

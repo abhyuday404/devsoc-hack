@@ -1,7 +1,7 @@
 export type View = "upload" | "data" | "insights" | "profile" | "graphs";
 
 export type Customer = {
-  id: string | number;
+  id: string | number | bigint;
   name: string;
   email: string;
   phone: string;
@@ -18,6 +18,16 @@ export type TableInfo = {
   tableName: string;
   columns: { name: string; type: string }[];
   rowCount: number;
+};
+
+export type UploadedFile = {
+  id: number;
+  fileName: string;
+  fileType: "csv" | "pdf";
+  status: string;
+  r2Key: string;
+  createdAt: Date;
+  resultCsvKey?: string | null;
 };
 
 export type QueryMessage = {
